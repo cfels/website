@@ -1,0 +1,72 @@
+<script lang="ts">
+	let showPost = $state(false);
+	let cmd = $state('');
+	function handleKey(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			if (cmd.trim() === 'post.yes.yesssir') showPost = true;
+			cmd = '';
+		}
+	}
+</script>
+<div class="content">
+	<p class="hiii">haiii~</p>
+	<p>i am <strong>moxiu</strong>, full time larper</p>
+  <p>also what do i do? well whatever that come's to my mind, and i create it</p>
+	<br>
+	<p class="section">interesting info (not really):</p>
+	<div class="about">
+		<div class="row"><span class="label">fav music</span><span class="value">hardtekk, hardstyle, rap, hip-hop, nightcore</span></div>
+		<div class="row"><span class="label">fav anime</span><span class="value"><a href="https://anilist.co/anime/175977/My-Deer-Friend-Nokotan/" target="_blank">しかのこのこのここしたんたん</a></span></div>
+		<div class="row"><span class="label">fav color</span><span class="value"><span class="dot"></span>#fad6ff (pastel pink)</span></div>
+		<div class="row"><span class="label">birthday</span><span class="value">january 24 (15yo) (Aquarius ♒)</span></div>
+		<div class="row"><span class="label">langs</span><span class="value"><img src="https://flagcdn.com/16x12/pl.png" alt="PL" width="16" height="12"> polish (native), <img src="https://flagcdn.com/16x12/gb.png" alt="GB" width="16" height="12"> c1</span></div>
+	</div>
+	<br>
+	<p class="section">contact me:</p>
+	<div class="about">
+		<div class="row"><span class="label">github</span><span class="value"><a href="https://github.com/cfels" target="_blank">github.com/cfels</a></span></div>
+		<div class="row"><span class="label">discord</span><span class="value">dildsong</span></div>
+		<div class="row"><span class="label">telegram</span><span class="value"><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a></span></div>
+		<div class="row email-row">
+			<span class="label">email</span>
+			<span class="value">
+				moxiix |at| proton |dot| com
+				<span class="pgp">please encrypt using pgp: <kbd>curl -sL http://moxiu.vacpro.fyi/moxikey.pgp | gpg --import</kbd></span>
+			</span>
+		</div>
+	</div>
+</div>
+<style>
+	.content { text-align: left; max-width: 600px; margin: 0 auto; padding: 0 1rem; box-sizing: border-box; }
+	.hiii { font-size: 1.2rem; color: #cdd6f4; margin-bottom: 0.5rem; }
+	p { font-size: 1rem; color: #cdd6f4; }
+	strong { color: #f5c2e7; font-weight: 600; }
+	.section { color: #f2cdcd; font-weight: 600; margin-bottom: 0.4rem; }
+	.about { display: flex; flex-direction: column; gap: 0.2rem; }
+	.row { display: flex; gap: 0.5rem; align-items: baseline; }
+	.label { color: #6c7086; font-size: 0.95rem; min-width: 80px; flex-shrink: 0; }
+	.value { color: #cdd6f4; font-size: 0.95rem; word-break: break-word; min-width: 0; }
+	.value img { vertical-align: middle; margin-right: 2px; }
+	.value a { color: #cba6f7; text-decoration: none; }
+	.value a:hover { color: #fad6ff; text-decoration: underline; }
+	.pgp { display: block; color: #9399b2; font-size: 0.88rem; margin-top: 0.15rem; }
+	kbd {
+		background: #1e1e2e;
+		color: #babbf1;
+		font-size: 0.85rem;
+		padding: 0.1rem 0.35rem;
+		border-radius: 4px;
+		border: 1px solid #313244;
+		font-family: monospace;
+		word-break: break-all;
+	}
+	.dot {
+		display: inline-block;
+		width: 11px; height: 11px;
+		border-radius: 50%;
+		background: #fad6ff;
+		margin-right: 4px;
+		vertical-align: middle;
+		border: 0.5px solid #585b70;
+	}
+</style>
