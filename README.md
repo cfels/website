@@ -3,9 +3,9 @@
 ### deploying
 ```
 bun install
+cp .env.example .env
 bun run build
-mv .env.example .env
 node build
 ```
 
-then just add it to your caddyfile and cloudflare so people can access it
+then just add it to your caddyfile and cloudflare so people can access it ALSO CHANGE UR PASS IN `.env`
