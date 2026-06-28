@@ -37,7 +37,7 @@
 				<span class="pgp">
 					if possible, please encrypt the email using pgp:
 					<kbd>curl -sL http://moxiu.vacpro.fyi/moxikey.pgp | gpg --import</kbd>
-					<a href="http://moxiu.vacpro.fyi/moxikey.pgp" target="_blank"></a>
+					<a href="https://moxiu.vacpro.fyi/moxikey.pgp" target="_blank"></a>
 				</span>
 			</span>
 		</div>
