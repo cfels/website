@@ -1,7 +1,7 @@
 <div class="content">
 	<p class="hiii">hai :3</p>
 	<br>
-	<p>i'm not struggling with money, but i would totally appreciate if you will donate &lt;3</p>
+	<p>i'm not struggling with money, but i would totally appreciate if you'd donate &lt;3</p>
 	<br>
 	<p class="section">my crypto addresses:</p>
 	<div class="about">
