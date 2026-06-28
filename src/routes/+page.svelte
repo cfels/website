@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	let showPost = $state(false);
 	let cmd = $state('');
 	function handleKey(e: KeyboardEvent) {
@@ -7,11 +8,13 @@
 			cmd = '';
 		}
 	}
+	onMount(() => import('spoilerjs/spoiler-span'));
 </script>
+
 <div class="content">
 	<p class="hiii">haiii~</p>
 	<p>i'm <strong>moxiu</strong>, full time larper</p>
-  <p>also what do i do? well whatever that come's to my mind, and i create it</p>
+	<p>also what do i do? well whatever that come's to my mind, and i create it</p>
 	<br>
 	<p class="section">interesting info (not really):</p>
 	<div class="about">
@@ -30,12 +33,17 @@
 		<div class="row email-row">
 			<span class="label">email</span>
 			<span class="value">
-				moxiix |at| proton |dot| com
-				<span class="pgp">please encrypt using pgp: <kbd>curl -sL http://moxiu.vacpro.fyi/moxikey.pgp | gpg --import</kbd></span>
+				<spoiler-span reveal-duration="150" spawn-stop-delay="80">moxiix |at| proton |dot| com</spoiler-span>
+				<span class="pgp">
+					please encrypt using pgp:
+					<kbd>curl -sL http://moxiu.vacpro.fyi/moxikey.pgp | gpg --import</kbd>
+					<a href="http://moxiu.vacpro.fyi/moxikey.pgp" target="_blank"></a>
+				</span>
 			</span>
 		</div>
 	</div>
 </div>
+
 <style>
 	.content { text-align: left; max-width: 600px; margin: 0 auto; padding: 0 1rem; box-sizing: border-box; }
 	.hiii { font-size: 1.2rem; color: #cdd6f4; margin-bottom: 0.5rem; }
@@ -50,7 +58,10 @@
 	.value a { color: #cba6f7; text-decoration: none; }
 	.value a:hover { color: #fad6ff; text-decoration: underline; }
 	.pgp { display: block; color: #9399b2; font-size: 0.88rem; margin-top: 0.15rem; }
+	.pgp-url { display: block; color: #6c7086; font-size: 0.82rem; margin-top: 0.15rem; font-family: monospace; }
+	.pgp-url:hover { color: #cba6f7 !important; }
 	kbd {
+		display: block;
 		background: #1e1e2e;
 		color: #babbf1;
 		font-size: 0.85rem;
@@ -59,6 +70,7 @@
 		border: 1px solid #313244;
 		font-family: monospace;
 		word-break: break-all;
+		margin-top: 0.15rem;
 	}
 	.dot {
 		display: inline-block;
