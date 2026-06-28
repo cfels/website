@@ -10,7 +10,7 @@
 </script>
 <div class="content">
 	<p class="hiii">haiii~</p>
-	<p>i am <strong>moxiu</strong>, full time larper</p>
+	<p>i'm <strong>moxiu</strong>, full time larper</p>
   <p>also what do i do? well whatever that come's to my mind, and i create it</p>
 	<br>
 	<p class="section">interesting info (not really):</p>
