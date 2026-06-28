@@ -36,7 +36,7 @@
 				<spoiler-span reveal-duration="150" spawn-stop-delay="80">moxiix |at| proton |dot| com</spoiler-span>
 				<span class="pgp">
 					if possible, please encrypt the email using pgp:
-					<kbd>curl -sL http://moxiu.vacpro.fyi/moxikey.pgp | gpg --import</kbd>
+					<kbd>curl -sL https://moxiu.vacpro.fyi/moxikey.pgp | gpg --import</kbd>
 					<a href="https://moxiu.vacpro.fyi/moxikey.pgp" target="_blank"></a>
 				</span>
 			</span>
