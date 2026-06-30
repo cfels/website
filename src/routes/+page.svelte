@@ -77,7 +77,9 @@
     <img src={containsJsPng} width="88" height="31" alt="page contain's js!" />
     <img src={anybrowserPng} width="88" height="31" alt="any browser!" />
     <img src={anybrowserRuPng} width="88" height="31" alt="any browser RU!" />
+    <a href="https://t.me/cfelz" target="_blank">
     <img src={YourAdPng} width="88" height="31" alt="your ad" />
+    </a>
 	</div>
 </div>
 
