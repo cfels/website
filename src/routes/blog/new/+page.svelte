@@ -1,5 +1,10 @@
 <script lang="ts">
 	import { marked } from 'marked';
+	import { onMount } from 'svelte';
+
+	onMount(() => {
+		import('spoilerjs/spoiler-span');
+	});
 
 	let password = $state('');
 	let authed = $state(false);
@@ -9,7 +14,11 @@
 	let submitted = $state(false);
 	let error = $state('');
 
-	let renderedPreview = $derived(marked(body) as string);
+	function withSpoilers(text: string) {
+		return text.replace(/\|\|([^|]+?)\|\|/g, (_, inner) => `<spoiler-span>${inner.trim()}</spoiler-span>`);
+	}
+
+	let renderedPreview = $derived(marked(withSpoilers(body)) as string);
 
 	async function checkPass() {
 		const res = await fetch('/api/posts/check', {
@@ -126,6 +135,7 @@
 		font-size: 0.95rem;
 		line-height: 1.7;
 		overflow-y: auto;
+		overflow-x: hidden;
 		text-align: left;
 	}
 	.preview :global(img) { max-width: 100%; height: auto; display: block; }
@@ -134,6 +144,7 @@
 	.preview :global(code) { background: #1e1e2e; padding: 0.1rem 0.3rem; font-family: inherit; }
 	.preview :global(pre) { background: #1e1e2e; padding: 0.5rem; overflow-x: auto; }
 	.preview :global(blockquote) { border-left: 2px solid #6c7086; margin: 0; padding-left: 0.75rem; color: #6c7086; }
+	.preview :global(spoiler-span) { --spoiler-particle-color: #cdd6f4; word-break: break-word; overflow-wrap: anywhere; display: inline-block; max-width: 100%; }
 	button {
 		background: transparent;
 		border: 0.5px solid #6c7086;
