@@ -1,5 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import shitcordGif from '$lib/assets/shitcord.gif';
+  import anybrowserPng from '$lib/assets/any-browser.png';
+  import anybrowserRuPng from '$lib/assets/any-browser-ru.png'
+  import containsJsPng from '$lib/assets/js.png'
+  import piracyPng from '$lib/assets/piracy.png'
+  import YourAdPng from '$lib/assets/your-ad-here.png'
+  import seedtorrentsGif from '$lib/assets/seedyourtorrents.gif'
 	let showPost = $state(false);
 	let cmd = $state('');
 	function handleKey(e: KeyboardEvent) {
@@ -42,6 +49,36 @@
 			</span>
 		</div>
 	</div>
+	<br>
+	<p class="section">some cool button's:</p>
+	<div class="buttons">
+		<a href="https://spyware.neocities.org/articles/discord" target="_blank">
+			<img src={shitcordGif} alt="discord is spyware" height="31">
+		</a>
+    <a href="https://www.qbittorrent.org/" target="_blank">
+			<img src={seedtorrentsGif} alt="seed your torrent's!" height="31">
+		</a>
+    <a href="https://m5rcel.neocities.org" target="_blank">
+		<img src="https://m5rcel.neocities.org/hardware_central.gif" width="88" height="31" alt="Woah Hardware Central" />
+    </a>
+    <a href="https://m5rcel.neocities.org" target="_blank">
+		<img src="https://m5rcel.neocities.org/hatems.jpg" width="88" height="31" alt="#1 Microslop Hater" />
+    </a>
+    <a href="https://m5rcel.neocities.org" target="_blank">
+		<img src="https://m5rcel.neocities.org/linuxnow.jpg" width="88" height="31" alt="Become a Linux user now!" />
+    </a>
+    <a href="https://m5rcel.neocities.org" target="_blank">
+    <img src="https://m5rcel.neocities.org/google_25wht.gif" width="88" height="31" alt="Googol." />
+    </a>
+    <a href="https://m5rcel.neocities.org" target="_blank">
+    <img src="https://m5rcel.neocities.org/gmail.gif" width="88" height="31" alt="Gmail" />
+    </a>
+    <img src={piracyPng} width="88" height="31" alt="piracy now!" />
+    <img src={containsJsPng} width="88" height="31" alt="page contain's js!" />
+    <img src={anybrowserPng} width="88" height="31" alt="any browser!" />
+    <img src={anybrowserRuPng} width="88" height="31" alt="any browser RU!" />
+    <img src={YourAdPng} width="88" height="31" alt="your ad" />
+	</div>
 </div>
 
 <style>
@@ -80,5 +117,18 @@
 		margin-right: 4px;
 		vertical-align: middle;
 		border: 0.5px solid #585b70;
+	}
+	.badges {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4rem;
+		align-items: center;
+	}
+	.badges img {
+		display: block;
+	}
+	.badge-break {
+		flex-basis: 100%;
+		height: 0;
 	}
 </style>

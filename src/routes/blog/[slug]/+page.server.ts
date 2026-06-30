@@ -7,7 +7,7 @@ export async function load({ params }) {
 	const filePath = path.join(process.cwd(), 'src', 'posts', `${params.slug}.md`);
 
 	if (!existsSync(filePath)) {
-		throw error(404, 'post not found');
+		throw error(404, "i don't think this post exists!");
 	}
 
 	const raw = await readFile(filePath, 'utf-8');

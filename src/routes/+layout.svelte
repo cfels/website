@@ -12,6 +12,9 @@
 	<img src={karin} alt="karin" class="karin flip" />
 </div>
 {@render children()}
+<footer class="site-footer">
+	<p>ヾ(＾∇＾) moxiu / last updated 2026-08-01 / <a href="https://github.com/cfels/website" target="_blank">source code</a></p>
+</footer>
 <style>
 	:global(body) {
 		margin: 0;
@@ -41,4 +44,29 @@
 		image-rendering: pixelated;
 	}
 	.flip { transform: scaleX(-1); }
+  
+  .site-footer {
+	  margin-top: 1.5rem;
+	  padding: 0.3rem 1rem 1.5rem;
+	  text-align: center;
+  }
+  .site-footer p:first-child {
+	  display: inline-block;
+	  border-top: 1.5px solid #313244;
+	  padding-top: 0.6rem;
+    width: 595px;
+  }
+  .site-footer p {
+	  color: #6c7086;
+	  font-size: 0.85rem;
+	  margin: 0.15rem 0;
+  }
+  .site-footer a {
+	  color: #cba6f7;
+	  text-decoration: underline;
+  }
+  .site-footer a:hover {
+	  color: #fad6ff;
+  }
+	
 </style>
