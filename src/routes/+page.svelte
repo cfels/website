@@ -6,6 +6,7 @@
   import containsJsPng from '$lib/assets/js.png'
   import piracyPng from '$lib/assets/piracy.png'
   import YourAdPng from '$lib/assets/your-ad-here.png'
+  import madewithnvimPng from '$lib/assets/madewithnvim.png'
   import seedtorrentsGif from '$lib/assets/seedyourtorrents.gif'
 	let showPost = $state(false);
 	let cmd = $state('');
@@ -77,8 +78,9 @@
     <img src={containsJsPng} width="88" height="31" alt="page contain's js!" />
     <img src={anybrowserPng} width="88" height="31" alt="any browser!" />
     <img src={anybrowserRuPng} width="88" height="31" alt="any browser RU!" />
+    <img src={madewithnvimPng} width="88" height="31" alt="made with nvim" />
     <a href="https://t.me/cfelz" target="_blank">
-    <img src={YourAdPng} width="88" height="31" alt="your ad" />
+    <img src={YourAdPng}  width="88" height="31" alt="your ad" />
     </a>
 	</div>
 </div>
