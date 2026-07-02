@@ -20,10 +20,16 @@
 </script>
 
 <div class="content">
-	<p class="hiii">haiii~</p>
-	<p>i'm <strong>moxiu</strong>, full time larper</p>
-	<p>also what do i do? well whatever that come's to my mind, and i create it</p>
-	<br>
+  <p class="hiii">haiii~</p>
+  <p>i'm <strong>moxiu</strong>, full time larper</p>
+  <p>also what do i do? well whatever that come's to my mind, and i create it</p>
+  <p>
+        also i mostly push to 
+        <a href="https://github.com/cfels" target="_blank">github</a> 
+        and rest of my stuff is on 
+        <a href="https://git.vacpro.fyi/moxiu" target="_blank">forgejo</a>
+  </p>
+  <br>
 	<p class="section">interesting info (not really):</p>
 	<div class="about">
 		<div class="row"><span class="label">fav music</span><span class="value">hardtekk, hardstyle, rap, hip-hop, nightcore</span></div>
@@ -35,7 +41,7 @@
 	<br>
 	<p class="section">contact me:</p>
 	<div class="about">
-		<div class="row"><span class="label">github</span><span class="value"><a href="https://github.com/cfels" target="_blank">github.com/cfels</a></span></div>
+    <div class="row"><span class="label">phone</span><span class="value">nope :p</span></div>
 		<div class="row"><span class="label">discord</span><span class="value">dildsong</span></div>
 		<div class="row"><span class="label">telegram</span><span class="value"><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a></span></div>
 		<div class="row email-row">
