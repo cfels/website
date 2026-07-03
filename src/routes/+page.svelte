@@ -27,7 +27,7 @@
   <br>
         i mostly push my stuff to 
         <a href="https://github.com/cfels" target="_blank">github</a>, 
-        and the rest of my stuff is on 
+        but the rest of my stuff is on 
         <a href="https://git.vacpro.fyi/moxiu" target="_blank">forgejo</a>
   </p>
   <br>
