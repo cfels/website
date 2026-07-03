@@ -24,6 +24,7 @@
   <p>i'm <strong>moxiu</strong>, full time larper</p>
   <p>also what do i do? well whatever that come's to my mind, then i create it</p>
   <p>
+  <br>
         i mostly push my stuff to 
         <a href="https://github.com/cfels" target="_blank">github</a>, 
         and the rest of my stuff is on 
