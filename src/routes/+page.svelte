@@ -9,6 +9,7 @@
   import madewithnvimPng from '$lib/assets/madewithnvim.png'
   import seedtorrentsGif from '$lib/assets/seedyourtorrents.gif'
   import moxiusbuttonPng from '$lib/assets/moxius_button.png'
+  import teibuttonPng from '$lib/assets/teidesu.png'
 	let showPost = $state(false);
 	let cmd = $state('');
 	function handleKey(e: KeyboardEvent) {
@@ -91,6 +92,9 @@
     <img src={anybrowserPng} width="88" height="31" alt="any browser!" />
     <img src={anybrowserRuPng} width="88" height="31" alt="any browser RU!" />
     <img src={madewithnvimPng} width="88" height="31" alt="made with nvim" />
+    <a href="https://tei.pet" target="_blank">
+    <img src={teibuttonPng}  width="88" height="31" alt="alina's website!" />
+    </a>
     <a href="https://t.me/cfelz" target="_blank">
     <img src={YourAdPng}  width="88" height="31" alt="your ad" />
     </a>
