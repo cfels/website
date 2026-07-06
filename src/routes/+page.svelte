@@ -33,7 +33,7 @@
   <br>
 	<p class="section">interesting info (not really):</p>
 	<div class="about">
-		<div class="row"><span class="label">fav music</span><span class="value">hardtekk, hardstyle, rap, hip-hop, nightcore</span></div>
+		<div class="row"><span class="label">fav music</span><span class="value">rap, hip-hop, etc. (idc abt genre if it's good i listen to it)</span></div>
 		<div class="row"><span class="label">fav anime</span><span class="value"><a href="https://anilist.co/anime/175977/My-Deer-Friend-Nokotan/" target="_blank">しかのこのこのここしたんたん</a></span></div>
 		<div class="row"><span class="label">fav color</span><span class="value"><span class="dot"></span>#fad6ff</span></div>
 		<div class="row"><span class="label">birthday</span><span class="value">january 24 (15yo) (Aquarius ♒)</span></div>
