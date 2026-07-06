@@ -8,6 +8,7 @@
   import YourAdPng from '$lib/assets/your-ad-here.png'
   import madewithnvimPng from '$lib/assets/madewithnvim.png'
   import seedtorrentsGif from '$lib/assets/seedyourtorrents.gif'
+  import moxiusbuttonPng from '$lib/assets/moxius_button.png'
 	let showPost = $state(false);
 	let cmd = $state('');
 	function handleKey(e: KeyboardEvent) {
@@ -75,6 +76,9 @@
     </a>
     <a href="https://m5rcel.neocities.org" target="_blank">
 		<img src="https://m5rcel.neocities.org/linuxnow.jpg" width="88" height="31" alt="Become a Linux user now!" />
+    </a>
+    <a href="https://moxiu.vacpro.fyi" target="_blank">
+    <img src={moxiusbuttonPng}  width="88" height="31" alt="my button!" />
     </a>
     <a href="https://m5rcel.neocities.org" target="_blank">
     <img src="https://m5rcel.neocities.org/google_25wht.gif" width="88" height="31" alt="Googol." />
