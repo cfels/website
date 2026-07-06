@@ -13,7 +13,7 @@
 </div>
 {@render children()}
 <footer class="site-footer">
-	<p>ヾ(＾∇＾) moxiu / last updated 2026-07-03 / <a href="https://git.vacpro.fyi/moxiu/website" target="_blank">source code</a></p>
+	<p>ヾ(＾∇＾) moxiu / last updated 2026-07-06 / <a href="https://github.com/cfels/website" target="_blank">source code</a></p>
 </footer>
 <style>
 	:global(body) {

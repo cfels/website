@@ -27,10 +27,8 @@
   <p>also what do i do? well whatever that come's to my mind, then i create it</p>
   <p>
   <br>
-        i mostly push my stuff to 
-        <a href="https://github.com/cfels" target="_blank">github</a>, 
-        but the rest of my stuff is on 
-        <a href="https://git.vacpro.fyi/moxiu" target="_blank">forgejo</a>
+        all my project's and stuff are on 
+        <a href="https://github.com/cfels" target="_blank">github</a>
   </p>
   <br>
 	<p class="section">interesting info (not really):</p>
@@ -64,7 +62,7 @@
 	<p class="section">some cool button's:</p>
 	<div class="buttons">
 		<a href="https://spyware.neocities.org/articles/discord" target="_blank">
-			<img src={shitcordGif} alt="discord is spyware" height="31">
+			<img src={shitcordGif} alt="ragebaited?" height="31">
 		</a>
     <a href="https://www.qbittorrent.org/" target="_blank">
 			<img src={seedtorrentsGif} alt="seed your torrent's!" height="31">
