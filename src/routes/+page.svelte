@@ -43,7 +43,6 @@
 	<p class="section">contact me:</p>
 	<div class="about">
     <div class="row"><span class="label">phone</span><span class="value">nope :p</span></div>
-    <div class="row"><span class="label">signal</span><span class="value"><a href="https://signal.me/#eu/Yykn8IkJTog4gQvhd4sih9aiqls8kG4yZgfxiFvYLHb6fd-4H3pHcpPy0fjp8tcY" target="_blank">moxiu.777</a></span></div>
 		<div class="row"><span class="label">discord</span><span class="value">dildsong</span></div>
 		<div class="row"><span class="label">telegram</span><span class="value"><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a></span></div>
 		<div class="row email-row">
