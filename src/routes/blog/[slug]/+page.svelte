@@ -2,10 +2,18 @@
 	import { marked } from 'marked';
 	import { onMount } from 'svelte';
 	let { data } = $props();
+
 	function withSpoilers(text: string) {
-		return text.replace(/\|\|([^|]+?)\|\|/g, (_, inner) => `<spoiler-span>${inner.trim()}</spoiler-span>`);
+		return text.replace(/\|\|([^|]+?)\|\|/g, (_, inner) => {
+			const trimmed = inner.trim();
+			if (/<img[\s>]/i.test(trimmed)) {
+				return `<span class="spoiler-img">${trimmed}</span>`;
+			}
+			return `<spoiler-span>${trimmed}</spoiler-span>`;
+		});
 	}
-	let rendered = $derived(marked(withSpoilers(data.body)) as string);
+
+	let rendered = $derived(withSpoilers(marked(data.body) as string));
 
 	onMount(() => {
 		import('spoilerjs/spoiler-span');
@@ -31,4 +39,23 @@
 	.body :global(blockquote) { border-left: 2px solid #6c7086; margin: 0; padding-left: 0.75rem; color: #6c7086; }
 	.body :global(p) { margin: 0.5rem 0; }
 	.body :global(spoiler-span) { --spoiler-particle-color: #cdd6f4; word-break: break-word; overflow-wrap: anywhere; display: inline-block; max-width: 100%; }
+	.body :global(.spoiler-img) {
+		display: inline-block;
+		cursor: pointer;
+		max-width: 100%;
+		line-height: 0;
+		overflow: hidden;
+	}
+	.body :global(.spoiler-img img) {
+		display: block;
+		max-width: 100%;
+		height: auto;
+		filter: blur(20px);
+		transition: filter 0.5s ease;
+		pointer-events: none;
+		user-select: none;
+	}
+	.body :global(.spoiler-img:hover img) {
+		filter: blur(0px);
+	}
 </style>

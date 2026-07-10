@@ -14,11 +14,17 @@
 	let submitted = $state(false);
 	let error = $state('');
 
-	function withSpoilers(text: string) {
-		return text.replace(/\|\|([^|]+?)\|\|/g, (_, inner) => `<spoiler-span>${inner.trim()}</spoiler-span>`);
+	function withSpoilers(html: string) {
+		return html.replace(/\|\|([^|]+?)\|\|/g, (_, inner) => {
+			const trimmed = inner.trim();
+			if (/<img[\s>]/i.test(trimmed)) {
+				return `<span class="spoiler-img">${trimmed}</span>`;
+			}
+			return `<spoiler-span>${trimmed}</spoiler-span>`;
+		});
 	}
 
-	let renderedPreview = $derived(marked(withSpoilers(body)) as string);
+	let renderedPreview = $derived(withSpoilers(marked(body) as string));
 
 	async function checkPass() {
 		const res = await fetch('/api/posts/check', {
@@ -145,6 +151,25 @@
 	.preview :global(pre) { background: #1e1e2e; padding: 0.5rem; overflow-x: auto; }
 	.preview :global(blockquote) { border-left: 2px solid #6c7086; margin: 0; padding-left: 0.75rem; color: #6c7086; }
 	.preview :global(spoiler-span) { --spoiler-particle-color: #cdd6f4; word-break: break-word; overflow-wrap: anywhere; display: inline-block; max-width: 100%; }
+	.preview :global(.spoiler-img) {
+		display: inline-block;
+		cursor: pointer;
+		max-width: 100%;
+		line-height: 0;
+		overflow: hidden;
+	}
+	.preview :global(.spoiler-img img) {
+		display: block;
+		max-width: 100%;
+		height: auto;
+		filter: blur(20px);
+		transition: filter 0.5s ease;
+		pointer-events: none;
+		user-select: none;
+	}
+	.preview :global(.spoiler-img:hover img) {
+		filter: blur(0px);
+	}
 	button {
 		background: transparent;
 		border: 0.5px solid #6c7086;
