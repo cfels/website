@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import 'spoilerjs/spoiler-span';
 	import shitcordGif from '$lib/assets/shitcord.gif';
   import anybrowserPng from '$lib/assets/any-browser.png';
   import anybrowserRuPng from '$lib/assets/any-browser-ru.png'
@@ -18,7 +19,15 @@
 			cmd = '';
 		}
 	}
-	onMount(() => import('spoilerjs/spoiler-span'));
+	const atVariants  = ['|at|', '[@]', '(at)', '{@}', '[at]', '(@)', '<at>'];
+	const dotVariants = ['|dot|', '[.]', '(dot)', '{.}', '[dot]', '(.)', '<dot>'];
+
+	function pick<T>(arr: T[]): T { return arr[Math.floor(Math.random() * arr.length)]; }
+
+	const emailDisplay = `moxiix ${pick(atVariants)} proton ${pick(dotVariants)} com`;
+
+	let mounted = $state(false);
+	onMount(() => { mounted = true; });
 </script>
 
 <div class="content">
@@ -52,7 +61,11 @@
 		<div class="row email-row">
 			<span class="label">email</span>
 			<span class="value">
-				<spoiler-span reveal-duration="150" spawn-stop-delay="80">moxiix |at| proton |dot| com</spoiler-span>
+				{#if mounted}
+					<spoiler-span reveal-duration="150" spawn-stop-delay="80">{emailDisplay}</spoiler-span>
+				{:else}
+					<span style="opacity:0">loading...</span>
+				{/if}
 				<span class="pgp">
 					if possible, please encrypt the email using pgp:
 					<kbd>curl -sL https://moxiu.vacpro.fyi/moxikey.pgp | gpg --import</kbd>
