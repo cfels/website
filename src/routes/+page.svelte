@@ -36,7 +36,7 @@
   <br>
 	<p class="section">interesting info (not really):</p>
 	<div class="about">
-		<div class="row"><span class="label">fav music</span><span class="value">hardtekk, hardstyle, rap, hip-hop, nightcore</span></div>
+		<div class="row"><span class="label">fav music</span><span class="value">rap, hip-hop, etc. (idc abt genre if it's good i listen to it)</span></div>
 		<div class="row"><span class="label">fav anime</span><span class="value"><a href="https://anilist.co/anime/175977/My-Deer-Friend-Nokotan/" target="_blank">しかのこのこのここしたんたん</a></span></div>
 		<div class="row"><span class="label">fav color</span><span class="value"><span class="dot"></span>#fad6ff</span></div>
 		<div class="row"><span class="label">birthday</span><span class="value">january 24 (15yo) (Aquarius ♒)</span></div>
@@ -46,8 +46,8 @@
 	<p class="section">contact me:</p>
 	<div class="about">
     <div class="row"><span class="label">phone</span><span class="value">nope :p</span></div>
-    <div class="row"><span class="label">signal</span><span class="value"><a href="https://signal.me/#eu/Yykn8IkJTog4gQvhd4sih9aiqls8kG4yZgfxiFvYLHb6fd-4H3pHcpPy0fjp8tcY" target="_blank">moxiu.777</a></span></div>
-		<div class="row"><span class="label">discord</span><span class="value">dildsong</span></div>
+    <div class="row"><span class="label">signal</span><span class="value"><a href="https://signal.me/#eu/Ncm7sTwPsWaFwZLCEIrb9v8spwsWOFaLFCeQZu5T6iRV8jKPW9VIiKVkAR6qND3T" target="_blank">moxiu.777</a></span></div>
+		<div class="row"><span class="label">discord</span><span class="value">dildsong (i rarely open dc so don't be suprized by late reply)</span></div>
 		<div class="row"><span class="label">telegram</span><span class="value"><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a></span></div>
 		<div class="row email-row">
 			<span class="label">email</span>
