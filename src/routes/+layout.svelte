@@ -1,7 +1,7 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.png';
 	import karin from '$lib/assets/karin.gif';
-	let { children } = $props();
+	let { children, data } = $props();
 </script>
 <svelte:head>
 	<link rel="icon" href={favicon} />
@@ -13,7 +13,7 @@
 </div>
 {@render children()}
 <footer class="site-footer">
-	<p>ヾ(＾∇＾) moxiu / last updated 2026-07-10 / <a href="https://github.com/cfels/website" target="_blank">source code</a></p>
+	<p>ヾ(＾∇＾) moxiu / last updated {data.lastUpdated} / <a href="https://github.com/cfels/website" target="_blank">source code</a></p>
 </footer>
 <style>
 	:global(body) {
