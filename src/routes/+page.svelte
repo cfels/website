@@ -38,9 +38,6 @@
   <br>
         all my project's and stuff are on 
         <a href="https://github.com/cfels" target="_blank">github</a>
-        but i occasionally push to my 
-        <a href="https://codeberg.org/cfels" target="_blank">codeberg</a>
-        (mostly mirror's tho)
   </p>
   <br>
 	<p class="section">interesting info (not really):</p>
