@@ -36,8 +36,10 @@
   <p>also what do i do? well whatever that come's to my mind, then i create it</p>
   <p>
   <br>
-        all my project's and stuff are on 
+        most of my project's and stuff are on 
         <a href="https://github.com/cfels" target="_blank">github</a>
+        but i occasionally may push to my 
+        <a href="https://codeberg.org/moxi" target="_blank">codeberg</a>
   </p>
   <br>
 	<p class="section">interesting info (not really):</p>
@@ -53,8 +55,8 @@
 	<div class="about">
     <div class="row"><span class="label">phone</span><span class="value">nope :p</span></div>
     <div class="row"><span class="label">signal</span><span class="value"><a href="https://signal.me/#eu/Ncm7sTwPsWaFwZLCEIrb9v8spwsWOFaLFCeQZu5T6iRV8jKPW9VIiKVkAR6qND3T" target="_blank">moxiu.777</a></span></div>
-		<div class="row"><span class="label">discord</span><span class="value">dildsong (i rarely open dc so don't be suprized by late reply)</span></div>
-		<div class="row"><span class="label">telegram</span><span class="value"><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a></span></div>
+		<div class="row"><span class="label">matrix</span><span class="value"><a href="https://matrix.to/#/@moxiu:chat.vacpro.fyi" target="_blank">@moxiu:chat.vacpro.fyi</a></span></div>
+    <div class="row"><span class="label">telegram</span><span class="value"><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a></span></div>
 		<div class="row email-row">
 			<span class="label">email</span>
 			<span class="value">
