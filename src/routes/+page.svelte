@@ -75,6 +75,7 @@
 	</div>
 	<br>
 	<p class="section">some cool button's:</p>
+	<div class="button's">
     <a href="https://www.qbittorrent.org/" target="_blank">
 			<img src={seedtorrentsGif} alt="seed your torrent's!" height="31">
 		</a>
