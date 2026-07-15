@@ -55,7 +55,7 @@
 	<div class="about">
     <div class="row"><span class="label">phone</span><span class="value">nope :p</span></div>
     <div class="row"><span class="label">signal</span><span class="value"><a href="https://signal.me/#eu/Ncm7sTwPsWaFwZLCEIrb9v8spwsWOFaLFCeQZu5T6iRV8jKPW9VIiKVkAR6qND3T" target="_blank">moxiu.777</a></span></div>
-		<div class="row"><span class="label">matrix</span><span class="value"><a href="https://matrix.to/#/@moxiu:chat.vacpro.fyi" target="_blank">@moxiu:chat.vacpro.fyi</a></span></div>
+		<div class="row"><span class="label">discord</span><span class="value"><a href="https://discord.com/users/1154823136710246441" target="_blank">@moxiiuu</a></span></div>
     <div class="row"><span class="label">telegram</span><span class="value"><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a></span></div>
 		<div class="row email-row">
 			<span class="label">email</span>
@@ -75,10 +75,6 @@
 	</div>
 	<br>
 	<p class="section">some cool button's:</p>
-	<div class="buttons">
-		<a href="https://spyware.neocities.org/articles/discord" target="_blank">
-			<img src={shitcordGif} alt="ragebaited?" height="31">
-		</a>
     <a href="https://www.qbittorrent.org/" target="_blank">
 			<img src={seedtorrentsGif} alt="seed your torrent's!" height="31">
 		</a>
