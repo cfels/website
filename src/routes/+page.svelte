@@ -75,7 +75,7 @@
 	</div>
 	<br>
 	<p class="section">some cool button's:</p>
-	<div class="button's">
+	<div class="buttons">
     <a href="https://www.qbittorrent.org/" target="_blank">
 			<img src={seedtorrentsGif} alt="seed your torrent's!" height="31">
 		</a>
@@ -148,13 +148,13 @@
 		vertical-align: middle;
 		border: 0.5px solid #585b70;
 	}
-	.badges {
+	.buttons {
 		display: flex;
 		flex-wrap: wrap;
 		gap: 0.4rem;
 		align-items: center;
 	}
-	.badges img {
+	.buttons img {
 		display: block;
 	}
 	.badge-break {
