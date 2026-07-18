@@ -53,7 +53,6 @@
 	<p class="section">contact me:</p>
 	<div class="about">
     <div class="row"><span class="label">phone</span><span class="value">nope :p</span></div>
-    <div class="row"><span class="label">signal</span><span class="value"><a href="https://signal.me/#eu/Ncm7sTwPsWaFwZLCEIrb9v8spwsWOFaLFCeQZu5T6iRV8jKPW9VIiKVkAR6qND3T" target="_blank">moxiu.777</a></span></div>
 		<div class="row"><span class="label">discord</span><span class="value"><a href="https://discord.com/users/1154823136710246441" target="_blank">@moxiiuu</a></span></div>
     <div class="row"><span class="label">telegram</span><span class="value"><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a></span></div>
     <div class="row"><span class="label">fendi</span><span class="value"><a href="https://fendi.vacpro.fyi/moxiu" target="_blank">@moxiu</a></span></div>
