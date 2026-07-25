@@ -13,7 +13,7 @@
 </div>
 {@render children()}
 <footer class="site-footer">
-	<p>ヾ(＾∇＾) moxiu / last updated {data.lastUpdated} / <a href="https://github.com/cfels/website" target="_blank">source code</a></p>
+	<p>made with 🤍 by moxiu / last updated {data.lastUpdated} / <a href="https://github.com/cfels/website" target="_blank">source code</a></p>
 </footer>
 <style>
 	:global(body) {
@@ -21,7 +21,7 @@
 		min-height: 100vh;
 		background-color: #11111b;
 		color: #cdd6f4;
-		font-family: 'Iosevka Nerd Font', 'Iosevka', monospace;
+		font-family: 'Iosevka', 'Iosevka', monospace;
 		text-align: center;
 		padding-top: 2rem;
 	}
