@@ -16,9 +16,9 @@
 	import CakeIcon from '~icons/mingcute/cake-line';
 	import TranslateIcon from '~icons/mingcute/translate-2-line';
 	import PhoneIcon from '~icons/mingcute/phone-line';
-	import ChatIcon from '~icons/mingcute/chat-3-line';
-	import SendIcon from '~icons/mingcute/send-plane-line';
-	import LinkIcon from '~icons/mingcute/link-line';
+	import DiscordIcon from '~icons/mingcute/discord-line';
+	import TelegramIcon from '~icons/mingcute/telegram-line';
+	import MastodonIcon from '~icons/mingcute/mastodon-line';
 	import MailIcon from '~icons/mingcute/mail-line';
 
 	let showPost = $state(false);
@@ -37,7 +37,25 @@
 	const emailDisplay = `moxiix ${pick(atVariants)} proton ${pick(dotVariants)} com`;
 
 	let mounted = $state(false);
-	onMount(() => { mounted = true; });
+	onMount(() => {
+		const ready = 'fonts' in document ? document.fonts.ready : Promise.resolve();
+		ready.then(() => {
+			requestAnimationFrame(() => {
+				requestAnimationFrame(() => {
+					mounted = true;
+				});
+			});
+		});
+	});
+
+	let planeState = $state<'idle' | 'playing'>('idle');
+
+	function planeEnter() {
+		if (planeState === 'idle') planeState = 'playing';
+	}
+	function planeAnimEnd() {
+		planeState = 'idle';
+	}
 </script>
 
 <div class="content">
@@ -58,16 +76,33 @@
 		<div class="row"><span class="label"><MusicIcon width="16" height="16" /> fav music</span><span class="value">rap, hip-hop, etc. (idc abt genre if it's good i listen to it)</span></div>
 		<div class="row"><span class="label"><TvIcon width="16" height="16" /> fav anime</span><span class="value"><a href="https://anilist.co/anime/175977/My-Deer-Friend-Nokotan/" target="_blank">しかのこのこのここしたんたん</a></span></div>
 		<div class="row"><span class="label"><BrushIcon width="16" height="16" /> fav color</span><span class="value"><span class="dot"></span>#fad6ff</span></div>
-		<div class="row"><span class="label"><CakeIcon width="16" height="16" /> birthday</span><span class="value">january 24 (15yo) (Aquarius ♒)</span></div>
+		<div class="row"><span class="label"><CakeIcon width="16" height="16" /> birthday</span><span class="value">january 24 (15yo) [♒ Aquarius]</span></div>
 		<div class="row"><span class="label"><TranslateIcon width="16" height="16" /> langs</span><span class="value"><img src="https://flagcdn.com/16x12/pl.png" alt="PL" width="16" height="12"> polish (native), <img src="https://flagcdn.com/16x12/gb.png" alt="GB" width="16" height="12"> c1</span></div>
 	</div>
 	<br>
 	<p class="section">contact me:</p>
 	<div class="about">
 		<div class="row"><span class="label"><PhoneIcon width="16" height="16" /> phone</span><span class="value">nope :p</span></div>
-		<div class="row"><span class="label"><ChatIcon width="16" height="16" /> discord</span><span class="value"><a href="https://discord.com/users/1154823136710246441" target="_blank">@moxiiuu</a></span></div>
-		<div class="row"><span class="label"><SendIcon width="16" height="16" /> telegram</span><span class="value"><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a></span></div>
-		<div class="row"><span class="label"><LinkIcon width="16" height="16" /> fendi</span><span class="value"><a href="https://fendi.vacpro.fyi/moxiu" target="_blank">@moxiu</a></span></div>
+		<div class="row discord-row"><span class="label"><DiscordIcon width="16" height="16" /> discord</span><span class="value"><a href="https://discord.com/users/1154823136710246441" target="_blank">@moxiiuu</a></span></div>
+		<div
+			class="row telegram-row"
+			onmouseenter={planeEnter}
+		>
+			<span class="label">
+				<span class="plane-hitbox">
+					<span
+						class="plane-wrap"
+						class:plane-loop={planeState === 'playing'}
+						onanimationend={planeAnimEnd}
+					>
+						<TelegramIcon width="16" height="16" />
+					</span>
+				</span>
+				telegram
+			</span>
+			<span class="value"><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a></span>
+		</div>
+		<div class="row"><span class="label"><MastodonIcon width="16" height="16" /> fendi</span><span class="value"><a href="https://fendi.vacpro.fyi/moxiu" target="_blank">@moxiu</a></span></div>
 		<div class="row email-row">
 			<span class="label"><MailIcon width="16" height="16" /> email</span>
 			<span class="value">
@@ -127,13 +162,42 @@
 	.row:hover .label { color: #cba6f7; }
 	.row:hover .label :global(svg) { transform: scale(1.15) rotate(-6deg); }
 	.label :global(svg) { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); flex-shrink: 0; }
+
+	.discord-row .label :global(svg) {
+		transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	.discord-row:hover .label :global(svg) {
+		transform: rotate(360deg);
+	}
+
+	.plane-hitbox {
+		position: relative;
+		width: 16px;
+		height: 16px;
+		overflow: hidden;
+		display: inline-block;
+		flex-shrink: 0;
+	}
+	.plane-wrap {
+		position: absolute;
+		top: 0;
+		left: 0;
+		display: inline-flex;
+	}
+	.plane-wrap.plane-loop {
+		animation: plane-loop-anim 0.9s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+	}
+	@keyframes plane-loop-anim {
+		0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+		38% { transform: translate(130%, -130%) rotate(-22deg); opacity: 0; }
+		40% { transform: translate(-130%, 130%) rotate(22deg); opacity: 0; }
+		100% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+	}
+
 	.value { color: #cdd6f4; font-size: 0.95rem; word-break: break-word; min-width: 0; }
 	.value img { vertical-align: middle; margin-right: 2px; }
 	.value a { color: #cba6f7; text-decoration: none; }
 	.value a:hover { color: #fad6ff; text-decoration: underline; }
-	.pgp { display: block; color: #9399b2; font-size: 0.88rem; margin-top: 0.15rem; }
-	.pgp-url { display: block; color: #6c7086; font-size: 0.82rem; margin-top: 0.15rem; font-family: monospace; }
-	.pgp-url:hover { color: #cba6f7 !important; }
 	kbd {
 		display: block;
 		background: #1e1e2e;

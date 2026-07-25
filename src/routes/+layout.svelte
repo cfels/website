@@ -24,6 +24,12 @@
 		font-family: 'Iosevka', 'Iosevka', monospace;
 		text-align: center;
 		padding-top: 2rem;
+		cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14'><circle cx='7' cy='7' r='6' fill='%23cba6f7'/></svg>") 7 7, auto;
+	}
+	:global(a),
+	:global(button),
+	:global(.karin) {
+		cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><circle cx='8' cy='8' r='7' fill='%23fad6ff'/></svg>") 8 8, pointer;
 	}
 	:global(a) { color: #cba6f7; text-decoration: none; }
 	:global(a:hover) { text-decoration: underline; }
