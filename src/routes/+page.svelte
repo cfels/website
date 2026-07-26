@@ -61,7 +61,7 @@
 <div class="content">
 	<p class="hiii">haiii~</p>
 	<p>i'm <strong>moxiu</strong>, part time catgirl.</p>
-	<p>also what do i do? well i'm mainly into making game's with godot rn, however i also do some reverse enginniering with ida</p>
+	<p>also what do i do? well i'm mainly into making random shit on linux, and reverse engineering.</p>
 	<p>
 	<br>
 		most of my project's and stuff are on
