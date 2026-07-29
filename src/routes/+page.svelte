@@ -67,7 +67,7 @@
 		most of my project's and stuff are on
 		<a href="https://github.com/cfels" target="_blank">github</a>
 		but i also push to my
-		<a href="https://codeberg.org/moxi" target="_blank">gitlab</a>
+		<a href="https://git.vacpro.fyi/moxiu" target="_blank">gitea</a>
 		sometime's
 	</p>
 	<br>
