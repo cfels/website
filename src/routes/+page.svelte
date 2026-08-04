@@ -21,14 +21,6 @@
 	import MastodonIcon from '~icons/mingcute/mastodon-line';
 	import MailIcon from '~icons/mingcute/mail-line';
 
-	let showPost = $state(false);
-	let cmd = $state('');
-	function handleKey(e: KeyboardEvent) {
-		if (e.key === 'Enter') {
-			if (cmd.trim() === 'post.yes.yesssir') showPost = true;
-			cmd = '';
-		}
-	}
 	const atVariants  = ['|at|', '[@]', '(at)', '{@}', '[at]', '(@)', '<at>'];
 	const dotVariants = ['|dot|', '[.]', '(dot)', '{.}', '[dot]', '(.)', '<dot>'];
 
@@ -61,14 +53,13 @@
 <div class="content">
 	<p class="hiii">haiii~</p>
 	<p>i'm <strong>moxiu</strong>, part time catgirl.</p>
-	<p>also what do i do? well i'm mainly into making random shit on linux, and reverse engineering.</p>
+	<p>also what do i do? well i mainly fuck around with linux and windows (i use IOT LTSC btw),</p>
+	<p>also i do reverse engineering.</p><br>
+	<p>ps. dualbooting sucks (my opinion) </p>
 	<p>
 	<br>
-		most of my project's and stuff are on
+		all my project's and stuff are on
 		<a href="https://github.com/cfels" target="_blank">github</a>
-		but i also push to my
-		<a href="https://git.vacpro.fyi/moxiu" target="_blank">gitea</a>
-		sometime's
 	</p>
 	<br>
 	<p class="section">interesting info (not really):</p>
