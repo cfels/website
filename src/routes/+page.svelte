@@ -53,7 +53,7 @@
 <div class="content">
 	<p class="hiii">haiii~</p>
 	<p>i'm <strong>moxiu</strong>, part time catgirl.</p>
-	<p>also what do i do? well i mainly fuck around with linux and windows (i use IOT LTSC btw), also i do reverse engineering.</p> <br>
+	<p>also what do i do? well i mainly fuck around with linux and windows, also i try to do some game dev.</p> <br>
 	<p>ps. dualbooting sucks (my opinion) </p>
 	<p>
 	<br>
