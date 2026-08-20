@@ -8,7 +8,7 @@
 </svelte:head>
 <div class="topnav">
 	<img src={karin} alt="karin" class="karin" />
-	<span class="links"><a href="/">moxiu</a> / <a href="https://fendi.vacpro.fyi/moxiu" target="_blank">yapping</a> / <a href="/donate">donate</a></span>
+	<span class="links"><a href="/">moxiu</a> / <a href="https://x.com/moxiu_x" target="_blank">yapping</a> / <a href="/donate">donate</a></span>
 	<img src={karin} alt="karin" class="karin flip" />
 </div>
 {@render children()}
