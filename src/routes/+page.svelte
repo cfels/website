@@ -53,12 +53,13 @@
 <div class="content">
 	<p class="hiii">haiii~</p>
 	<p>i'm <strong>moxiu</strong>, part time catgirl.</p>
-	<p>also what do i do? well i mainly fuck around with linux and windows, also i try to do some game dev.</p> <br>
+	<p>also what do i do? well i mainly fuck reverse engineering, vs2026 and stuff, i mainly do low level stuff.</p> <br>
 	<p>ps. dualbooting sucks (my opinion) </p>
 	<p>
 	<br>
 		all my project's and stuff are on
-		<a href="https://github.com/cfels" target="_blank">github</a>
+		<a href="https://github.com/cfels" target="_blank">github</a> but i may push something to 
+		<a href="https://git.vacpro.fyi/moxi" target="_blank">VAC_git</a>
 	</p>
 	<br>
 	<p class="section">interesting info (not really):</p>
