@@ -53,7 +53,7 @@
 <div class="content">
 	<p class="hiii">haiii~</p>
 	<p>i'm <strong>moxiu</strong>, part time catgirl.</p>
-	<p>also what do i do? well i mainly fuck reverse engineering, vs2026 and stuff, i mainly do low level stuff.</p> <br>
+	<p>also what do i do? well i mainly fuck around with reverse engineering, vs2026 and stuff, i mainly do low level stuff.</p> <br>
 	<p>ps. dualbooting sucks (my opinion) </p>
 	<p>
 	<br>
