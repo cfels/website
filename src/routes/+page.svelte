@@ -19,7 +19,6 @@
     import DiscordIcon from "~icons/mingcute/discord-line";
     import TelegramIcon from "~icons/mingcute/telegram-line";
     import MailIcon from "~icons/mingcute/mail-line";
-    import MatrixLogoBoldIcon from "@iconify-svelte/ph/matrix-logo-bold";
 
     const atVariants = ["|at|", "[@]", "(at)", "{@}", "[at]", "(@)", "<at>"];
     const dotVariants = [
@@ -157,16 +156,6 @@
             </span>
             <span class="value"
                 ><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a
-                ></span
-            >
-        </div>
-        <div class="row">
-            <span class="label"
-                ><MatrixLogoBoldIcon width="16" height="16" /> matrix</span
-            ><span class="value"
-                ><a
-                    href="https://matrix.to/#/@moxiu:sokzbrzozy.vacpro.fyi"
-                    target="_blank">@moxiu:sokzbrzozy.vacpro.fyi</a
                 ></span
             >
         </div>
