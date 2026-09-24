@@ -1,20 +1,55 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import favicon from '$lib/assets/favicon.png';
-	import karin from '$lib/assets/karin.gif';
+	import MusicPlayer from '$lib/components/MusicPlayer.svelte';
+	import astonMachan from '$lib/assets/uma/aston-machan.gif';
+	import daiwaScarlet from '$lib/assets/uma/daiwa-scarlet.gif';
+	import haruUrara from '$lib/assets/uma/haru-urara.gif';
+	import kitasanBlack from '$lib/assets/uma/kitasan-black.gif';
+	import naritaTaishin from '$lib/assets/uma/narita-taishin.gif';
+	import niceNature from '$lib/assets/uma/nice-nature.gif';
+	import tachyon from '$lib/assets/uma/tachyon.gif';
+
+	const umas = [
+		{ src: astonMachan, name: 'aston machan' },
+		{ src: daiwaScarlet, name: 'daiwa scarlet' },
+		{ src: haruUrara, name: 'haru urara' },
+		{ src: kitasanBlack, name: 'kitasan black' },
+		{ src: naritaTaishin, name: 'narita taishin' },
+		{ src: niceNature, name: 'nice nature' },
+		{ src: tachyon, name: 'tachyon' }
+	];
+
+	let leftUma = $state(0);
+	let rightUma = $state(Math.floor(umas.length / 2));
+
+	onMount(() => {
+		for (const uma of umas) {
+			const img = new Image();
+			img.src = uma.src;
+		}
+		const timer = setInterval(() => {
+			leftUma = (leftUma + 1) % umas.length;
+			rightUma = (rightUma + 1) % umas.length;
+		}, 3500);
+		return () => clearInterval(timer);
+	});
+
 	let { children, data } = $props();
 </script>
 <svelte:head>
 	<link rel="icon" href={favicon} />
 </svelte:head>
 <div class="topnav">
-	<img src={karin} alt="karin" class="karin" />
+	<img src={umas[leftUma].src} alt={umas[leftUma].name} class="uma" />
 	<span class="links"><a href="/">moxiu</a> / <a href="https://x.com/moxiu_x" target="_blank">yapping</a> / <a href="/donate">donate</a></span>
-	<img src={karin} alt="karin" class="karin flip" />
+	<img src={umas[rightUma].src} alt={umas[rightUma].name} class="uma flip" />
 </div>
 {@render children()}
 <footer class="site-footer">
 	<p>made with 🤍 by moxiu / last updated {data.lastUpdated} / <a href="https://github.com/cfels/website" target="_blank">source code</a></p>
 </footer>
+<MusicPlayer />
 <style>
 	:global(body) {
 		margin: 0;
@@ -28,7 +63,7 @@
 	}
 	:global(a),
 	:global(button),
-	:global(.karin) {
+	:global(.uma) {
 		cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16'><circle cx='8' cy='8' r='7' fill='%23fad6ff'/></svg>") 8 8, pointer;
 	}
 	:global(a) { color: #cba6f7; text-decoration: none; }
@@ -46,10 +81,9 @@
 	.links { font-size: 1rem; color: #f5c2e7; }
 	.links a { color: #f5c2e7; }
 	.links a:hover { color: #fad6ff; text-decoration: none; }
-	.karin {
+	.uma {
 		height: 48px;
 		width: auto;
-		image-rendering: pixelated;
 	}
 	.flip { transform: scaleX(-1); }
 

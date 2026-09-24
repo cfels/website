@@ -62,7 +62,7 @@
 
 <div class="content">
     <p class="hiii">haiii~</p>
-    <p>i'm <strong>moxiu</strong>, part time catgirl.</p>
+    <p>i'm <strong>moxiu</strong>, part time horse?</p>
     <p>
         also what do i do? well i mainly fuck around with reverse engineering,
         linux and stuff, soo i mainly do low level stuff but not only!
