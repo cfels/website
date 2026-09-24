@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import favicon from '$lib/assets/favicon.png';
-	import MusicPlayer from '$lib/components/MusicPlayer.svelte';
 	import astonMachan from '$lib/assets/uma/aston-machan.gif';
 	import daiwaScarlet from '$lib/assets/uma/daiwa-scarlet.gif';
 	import haruUrara from '$lib/assets/uma/haru-urara.gif';
@@ -49,7 +48,6 @@
 <footer class="site-footer">
 	<p>made with 🤍 by moxiu / last updated {data.lastUpdated} / <a href="https://github.com/cfels/website" target="_blank">source code</a></p>
 </footer>
-<MusicPlayer />
 <style>
 	:global(body) {
 		margin: 0;
