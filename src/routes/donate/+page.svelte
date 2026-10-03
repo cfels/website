@@ -1,13 +1,18 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { reveal } from '$lib/reveal';
-</script>
 
-<svelte:head>
-	<link
-		rel="stylesheet"
-		href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/index.css"
-	/>
-</svelte:head>
+	onMount(() => {
+		if (document.querySelector('link[data-iosevka]')) return;
+		const link = document.createElement('link');
+		link.rel = 'stylesheet';
+		link.href = 'https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/index.css';
+		link.media = 'print';
+		link.dataset.iosevka = '';
+		link.onload = () => (link.media = 'all');
+		document.head.appendChild(link);
+	});
+</script>
 
 <div class="uma-content">
 	<div class="uma-card intro reveal" use:reveal>

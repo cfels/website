@@ -48,7 +48,6 @@
 }
 
 html {
-	scroll-behavior: smooth;
 	-webkit-text-size-adjust: 100%;
 	scrollbar-width: none;
 	-ms-overflow-style: none;

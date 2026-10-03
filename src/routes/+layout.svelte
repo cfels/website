@@ -7,6 +7,7 @@
 	import favicon from '$lib/assets/favicon.png';
 	import caratPng from '$lib/assets/carat.png';
 	import clickSound from '$lib/assets/click_ound.mp3';
+	import bgImg from '$lib/assets/bg/bg.webp';
 	import Loading from '$lib/components/Loading.svelte';
 	import umapyoiLogo from '$lib/assets/logo/umapyoi.png';
 	import astonMachan from '$lib/assets/uma/aston-machan.gif';
@@ -16,6 +17,7 @@
 	import naritaTaishin from '$lib/assets/uma/narita-taishin.gif';
 	import niceNature from '$lib/assets/uma/nice-nature.gif';
 	import tachyon from '$lib/assets/uma/tachyon.gif';
+	import specialWeek from '$lib/assets/uma/special-week.webp';
 
 	import '$lib/assets/fonts/momotrust.ttf';
 
@@ -370,6 +372,10 @@
 
 <svelte:head>
 	<link rel="icon" href={favicon} />
+	<link rel="preload" as="image" href={specialWeek} fetchpriority="high" />
+	<link rel="preload" as="image" href={bgImg} />
+	<link rel="preload" as="image" href={umapyoiLogo} />
+	<link rel="preload" as="image" href={caratPng} />
 </svelte:head>
 
 <svelte:window
