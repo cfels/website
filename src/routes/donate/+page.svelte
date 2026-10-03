@@ -2,6 +2,13 @@
 	import { reveal } from '$lib/reveal';
 </script>
 
+<svelte:head>
+	<link
+		rel="stylesheet"
+		href="https://cdn.jsdelivr.net/npm/@fontsource/iosevka@5.3.0/index.css"
+	/>
+</svelte:head>
+
 <div class="uma-content">
 	<div class="uma-card intro reveal" use:reveal>
 		<p class="hiii">Hai :3</p>

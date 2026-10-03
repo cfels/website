@@ -178,6 +178,8 @@
 	let closing = $state(false);
 	let railActive = $state(0);
 	let atTop = $state(true);
+	let light = $state(false);
+	let fxEnabled = false;
 	const STAR =
 		'M24 2C24.9 12.6 35.4 23.1 46 24 35.4 24.9 24.9 35.4 24 46 23.1 35.4 12.6 24.9 2 24 12.6 23.1 23.1 12.6 24 2Z';
 	const SHOE =
@@ -229,6 +231,7 @@
 		href === '/' ? page.url.pathname === '/' : page.url.pathname === href;
 
 	function spawnTap(e: PointerEvent) {
+		if (!fxEnabled) return;
 		if (e.button !== 0 || (e.target as HTMLElement)?.closest('.fx-modal')) return;
 		playClick();
 		held = true;
@@ -254,7 +257,7 @@
 	}
 
 	function spawnTrail(e: PointerEvent) {
-		if (!held) return;
+		if (!fxEnabled || !held) return;
 		if ((e.clientX - heldX) ** 2 + (e.clientY - heldY) ** 2 < 196) return;
 		heldX = e.clientX;
 		heldY = e.clientY;
@@ -274,7 +277,7 @@
 
 	function onScroll() {
 		atTop = window.scrollY < 8;
-		if (parPending) return;
+		if (!parallaxOn || parPending) return;
 		parPending = true;
 		requestAnimationFrame(applyParallax);
 	}
@@ -306,11 +309,20 @@
 
 	onMount(() => {
 		onScroll();
-		sfx = new Audio(clickSound);
-		sfx.preload = 'auto';
-		sfx.volume = 0.5;
-		if (window.matchMedia('(max-width: 700px)').matches) {
-			defaults.amount = 10;
+
+		const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+		const compact = window.matchMedia('(max-width: 900px)').matches;
+		light = !fine || compact;
+		fxEnabled = fine;
+
+		if (fxEnabled) {
+			sfx = new Audio(clickSound);
+			sfx.preload = 'auto';
+			sfx.volume = 0.5;
+		}
+
+		if (light) {
+			defaults.amount = 8;
 			fxAmount = defaults.amount;
 		}
 
@@ -324,29 +336,33 @@
 			img.src = umas[index].src;
 		};
 
-		const timer = setInterval(() => {
-			leftUma = (leftUma + 1) % umas.length;
-			rightUma = (rightUma + 1) % umas.length;
-			preload((leftUma + 1) % umas.length);
-		}, 3500);
-
 		const timeouts: ReturnType<typeof setTimeout>[] = [];
 		let reduced = false;
 		try {
 			reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		} catch {}
+
+		let timer: ReturnType<typeof setInterval> | undefined;
+		if (!light && !reduced) {
+			timer = setInterval(() => {
+				leftUma = (leftUma + 1) % umas.length;
+				rightUma = (rightUma + 1) % umas.length;
+				preload((leftUma + 1) % umas.length);
+			}, 3500);
+		}
+
 		if (reduced) {
 			booting = false;
 		} else {
 			timeouts.push(setTimeout(() => (closing = true), 520));
 			timeouts.push(setTimeout(() => (booting = false), 1300));
 
-			timeouts.push(setTimeout(() => preload((leftUma + 1) % umas.length), 2100));
+			if (!light) timeouts.push(setTimeout(() => preload((leftUma + 1) % umas.length), 2100));
 		}
-		parallaxOn = !reduced;
+		parallaxOn = !reduced && !light;
 
 		return () => {
-			clearInterval(timer);
+			if (timer) clearInterval(timer);
 			timeouts.forEach(clearTimeout);
 		};
 	});
@@ -468,11 +484,13 @@
 	</footer>
 </main>
 
-<div class="standee" aria-hidden="true">
-	{#key rightUma}
-		<img src={umas[rightUma].src} alt="" transition:fade={{ duration: 600, easing: cubicOut }} />
-	{/key}
-</div>
+{#if !booting && !light}
+	<div class="standee" aria-hidden="true">
+		{#key rightUma}
+			<img src={umas[rightUma].src} alt="" transition:fade={{ duration: 600, easing: cubicOut }} />
+		{/key}
+	</div>
+{/if}
 
 <nav class="bottombar">
 	{#each tabs as tab}
@@ -1278,6 +1296,28 @@
 	@media (max-width: 1180px) {
 		.standee {
 			display: none;
+		}
+	}
+
+	@media (hover: none), (max-width: 900px) {
+		.topbar {
+			background: linear-gradient(180deg, rgba(255, 252, 246, 0.99), rgba(246, 238, 223, 0.97));
+			-webkit-backdrop-filter: none;
+			backdrop-filter: none;
+		}
+
+		.bottombar {
+			background: linear-gradient(180deg, rgba(255, 252, 246, 0.97), rgba(246, 238, 223, 1));
+			-webkit-backdrop-filter: none;
+			backdrop-filter: none;
+		}
+
+		.uma-bg {
+			will-change: auto;
+		}
+
+		.faller {
+			filter: none;
 		}
 	}
 

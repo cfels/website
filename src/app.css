@@ -52,7 +52,12 @@ html {
 	-webkit-text-size-adjust: 100%;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
-	cursor: var(--cursor) 2 1, default;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	html {
+		cursor: var(--cursor) 2 1, default;
+	}
 }
 
 html::-webkit-scrollbar,

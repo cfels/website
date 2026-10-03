@@ -30,7 +30,11 @@
     const emailDisplay = `moxiix ${pick(atVariants)} proton ${pick(dotVariants)} com`;
 
     let mounted = $state(false);
+    let seekMonitor = $state(false);
     onMount(() => {
+        seekMonitor =
+            window.matchMedia("(hover: hover) and (pointer: fine)").matches &&
+            !window.matchMedia("(max-width: 900px)").matches;
         const ready =
             "fonts" in document ? document.fonts.ready : Promise.resolve();
         ready.then(() => {
@@ -182,7 +186,7 @@
                         reveal-duration="150"
                         spawn-stop-delay="40"
                         particle-lifetime="50"
-                        monitor-position="true"
+                        monitor-position={seekMonitor ? "true" : undefined}
                         use:emailReveal>{emailDisplay}</spoiler-span
                     >
                 {:else}
