@@ -42,6 +42,27 @@
 
     let planeState = $state<"idle" | "playing">("idle");
 
+    let scrubTimer: ReturnType<typeof setTimeout> | undefined;
+
+    function revealEmail() {
+        clearTimeout(scrubTimer);
+        scrubTimer = setTimeout(() => {
+            for (const node of document.querySelectorAll("body > canvas")) {
+                const canvas = node as HTMLCanvasElement;
+                canvas.style.transition = "opacity 0.3s ease";
+                canvas.style.opacity = "0";
+                setTimeout(() => canvas.remove(), 320);
+            }
+        }, 1200);
+    }
+
+    function emailReveal(node: HTMLElement) {
+        node.addEventListener("click", revealEmail);
+        return {
+            destroy: () => node.removeEventListener("click", revealEmail),
+        };
+    }
+
     function planeEnter() {
         if (planeState === "idle") planeState = "playing";
     }
@@ -159,8 +180,10 @@
                 {#if mounted}
                     <spoiler-span
                         reveal-duration="150"
-                        spawn-stop-delay="80"
-                        monitor-position="true">{emailDisplay}</spoiler-span
+                        spawn-stop-delay="40"
+                        particle-lifetime="50"
+                        monitor-position="true"
+                        use:emailReveal>{emailDisplay}</spoiler-span
                     >
                 {:else}
                     <span class="pending">Loading…</span>
