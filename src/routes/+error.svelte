@@ -1,6 +1,5 @@
 <script>
 	import { page } from '$app/state';
-	import { onMount } from 'svelte';
 
 	const faces = {
 		404: '>_<',
@@ -15,68 +14,64 @@
 			? "i don't think that page exists!"
 			: page.error.message
 	);
-
-	onMount(() => {
-		const prevHtml = document.documentElement.style.overflow;
-		const prevBody = document.body.style.overflow;
-		document.documentElement.style.overflow = 'hidden';
-		document.body.style.overflow = 'hidden';
-
-		return () => {
-			document.documentElement.style.overflow = prevHtml;
-			document.body.style.overflow = prevBody;
-		};
-	});
 </script>
 
-<div class="error-page">
-	<div class="face">{face}</div>
-	<p class="message">{message}</p>
-	<a href="/" class="home-link">← back home</a>
+<div class="uma-content error-page">
+	<div class="card">
+		<div class="face">{face}</div>
+		<p class="message">{message}</p>
+		<a href="/" class="home-link">← back home</a>
+	</div>
 </div>
 
 <style>
 	.error-page {
-		height: 100vh;
-		display: flex;
-		flex-direction: column;
 		align-items: center;
-		justify-content: flex-start;
-		gap: 0.75rem;
-		background: #11111b;
-		color: #cdd6f4;
-		font-family: monospace;
 		text-align: center;
-		padding: 1rem;
-		padding-top: 6vh;
-		box-sizing: border-box;
-		overflow: hidden;
+	}
+
+	.card {
+		width: 100%;
+		max-width: 380px;
+		margin: 10px auto;
+		padding: 22px 18px 24px;
+		background: #fffdf8;
+		border: 2px solid var(--line);
+		border-radius: 16px;
+		box-shadow: 0 2px 0 rgba(190, 175, 146, 0.45), 0 14px 26px -18px rgba(90, 70, 40, 0.6);
 	}
 
 	.face {
 		font-size: 3rem;
-		font-weight: bold;
+		font-weight: 800;
 		letter-spacing: 0.1em;
-		color: #cba6f7;
+		color: var(--green-d);
 	}
 
 	.message {
+		margin: 0.4rem 0 0;
 		font-size: 1rem;
-		color: #cdd6f4;
-		margin: 0;
+		font-weight: 700;
+		color: var(--ink);
 	}
 
 	.home-link {
-		margin-top: 1rem;
-		color: #cba6f7;
-		text-decoration: none;
+		display: inline-block;
+		margin-top: 1.1rem;
+		padding: 0.4rem 1.1rem;
+		border-radius: 999px;
+		background: linear-gradient(180deg, var(--green-l), var(--green-d));
+		color: #fff;
 		font-size: 0.9rem;
-		border-bottom: 1px dashed transparent;
-		transition: color 0.2s ease, border-color 0.2s ease;
+		font-weight: 800;
+		text-decoration: none;
+		border-bottom: 0;
+		box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), 0 2px 0 rgba(74, 143, 32, 0.35);
+		text-shadow: 0 1px 0 rgba(63, 120, 26, 0.5);
+		transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
 	}
 
 	.home-link:hover {
-		color: #fad6ff;
-		border-color: #fad6ff;
+		transform: translateY(-2px) scale(1.03);
 	}
 </style>

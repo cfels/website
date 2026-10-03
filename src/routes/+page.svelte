@@ -1,15 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
+    import { reveal } from "$lib/reveal";
     import "spoilerjs/spoiler-span";
-    import anybrowserPng from "$lib/assets/any-browser.png";
-    import anybrowserRuPng from "$lib/assets/any-browser-ru.png";
-    import containsJsPng from "$lib/assets/js.png";
-    import piracyPng from "$lib/assets/piracy.png";
-    import YourAdPng from "$lib/assets/your-ad-here.png";
-    import madewithnvimPng from "$lib/assets/madewithnvim.png";
-    import seedtorrentsGif from "$lib/assets/seedyourtorrents.gif";
-    import moxiusbuttonPng from "$lib/assets/moxius_button.png";
-    import teibuttonPng from "$lib/assets/teidesu.png";
     import MusicIcon from "~icons/mingcute/music-2-line";
     import TvIcon from "~icons/mingcute/tv-2-line";
     import BrushIcon from "~icons/mingcute/paint-brush-line";
@@ -42,11 +34,9 @@
         const ready =
             "fonts" in document ? document.fonts.ready : Promise.resolve();
         ready.then(() => {
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    mounted = true;
-                });
-            });
+            setTimeout(() => {
+                mounted = true;
+            }, 650);
         });
     });
 
@@ -58,277 +48,181 @@
     function planeAnimEnd() {
         planeState = "idle";
     }
+
 </script>
 
-<div class="content">
-    <p class="hiii">haiii~</p>
-    <p>i'm <strong>moxiu</strong>, part time horse?</p>
-    <p>
-        also what do i do? well i mainly fuck around with reverse engineering,
-        linux and stuff, soo i mainly do low level stuff but not only!
-    </p>
-    <br />
-    <p>ps. dualbooting sucks (my opinion)</p>
-    <p>
-        <br />
-        all my project's and stuff are on
-        <a href="https://github.com/cfels" target="_blank">github</a>
-    </p>
-    <br />
-    <p class="section">interesting info (not really):</p>
-    <div class="about">
-        <div class="row">
-            <span class="label"
-                ><MusicIcon width="16" height="16" /> fav music</span
-            ><span class="value"
-                >rap, hip-hop, etc. (idc abt genre if it's good i listen to it)</span
+<div class="uma-content">
+    <div class="uma-card intro reveal" use:reveal>
+        <p class="hiii">Haiii~</p>
+        <p>I'm <strong>Moxiu</strong>, part time horse?</p>
+        <p>
+            Also, what do I do? Well, I mainly mess around with reverse
+            engineering, Linux and stuff — so I mostly do low-level work, but
+            not only!
+        </p>
+        <p class="muted">PS. Dualbooting sucks (my opinion).</p>
+        <p>
+            All my projects and stuff are on
+            <a href="https://github.com/cfels" target="_blank">GitHub</a>.
+        </p>
+    </div>
+
+    <h2 class="uma-section reveal" id="info" use:reveal><span>Interesting Info (Not Really)</span><i></i></h2>
+    <div class="uma-card list reveal" use:reveal={70}>
+        <div class="uma-tile uma-row">
+            <span class="uma-tile-ico ic-music"><MusicIcon width="18" height="18" /></span>
+            <span class="uma-label">Fav Music</span>
+            <span class="uma-value"
+                >Rap, hip-hop, etc. — if it's good, I listen to it.</span
             >
         </div>
-        <div class="row">
-            <span class="label"
-                ><TvIcon width="16" height="16" /> fav anime</span
-            ><span class="value"
+        <div class="uma-tile uma-row">
+            <span class="uma-tile-ico ic-anime"><TvIcon width="18" height="18" /></span>
+            <span class="uma-label">Fav Anime</span>
+            <span class="uma-value"
                 ><a
                     href="https://anilist.co/anime/175977/My-Deer-Friend-Nokotan/"
                     target="_blank">しかのこのこのここしたんたん</a
                 ></span
             >
         </div>
-        <div class="row">
-            <span class="label"
-                ><BrushIcon width="16" height="16" /> fav color</span
-            ><span class="value"><span class="dot"></span>#fad6ff</span>
+        <div class="uma-tile uma-row">
+            <span class="uma-tile-ico ic-color"><BrushIcon width="18" height="18" /></span>
+            <span class="uma-label">Fav Color</span>
+            <span class="uma-value"><span class="dot"></span>#fad6ff</span>
         </div>
-        <div class="row">
-            <span class="label"
-                ><CakeIcon width="16" height="16" /> birthday</span
-            ><span class="value">january 24 (15yo) [♒ Aquarius]</span>
+        <div class="uma-tile uma-row">
+            <span class="uma-tile-ico ic-cake"><CakeIcon width="18" height="18" /></span>
+            <span class="uma-label">Birthday</span>
+            <span class="uma-value">January 24 (15yo) [♒ Aquarius]</span>
         </div>
-        <div class="row">
-            <span class="label"
-                ><TranslateIcon width="16" height="16" /> langs</span
-            ><span class="value"
+        <div class="uma-tile uma-row">
+            <span class="uma-tile-ico ic-lang"><TranslateIcon width="18" height="18" /></span>
+            <span class="uma-label">Langs</span>
+            <span class="uma-value"
                 ><img
                     src="https://flagcdn.com/16x12/pl.png"
                     alt="PL"
                     width="16"
                     height="12"
                 />
-                polish (native),
+                Polish (native),
                 <img
                     src="https://flagcdn.com/16x12/gb.png"
                     alt="GB"
                     width="16"
                     height="12"
-                /> c1</span
+                /> C1</span
             >
         </div>
     </div>
-    <br />
-    <p class="section">contact me:</p>
-    <div class="about">
-        <div class="row">
-            <span class="label"><PhoneIcon width="16" height="16" /> phone</span
-            ><span class="value">nope :p</span>
+
+    <h2 class="uma-section reveal" id="contact" use:reveal><span>Contact Me</span><i></i></h2>
+    <div class="uma-card list reveal" use:reveal={70}>
+        <div class="uma-tile uma-row">
+            <span class="uma-tile-ico ic-phone"><PhoneIcon width="18" height="18" /></span>
+            <span class="uma-label">Phone</span>
+            <span class="uma-value">Nope :p</span>
         </div>
-        <div class="row discord-row">
-            <span class="label"
-                ><DiscordIcon width="16" height="16" /> discord</span
-            ><span class="value"
+        <div class="uma-tile uma-row discord-row">
+            <span class="uma-tile-ico ic-discord"><DiscordIcon width="18" height="18" /></span>
+            <span class="uma-label">Discord</span>
+            <span class="uma-value"
                 ><a
                     href="https://discord.com/users/1154823136710246441"
                     target="_blank">@moxiiuu</a
                 ></span
             >
         </div>
-        <div class="row telegram-row" onmouseenter={planeEnter}>
-            <span class="label">
+        <div class="uma-tile uma-row telegram-row" onmouseenter={planeEnter}>
+            <span class="uma-tile-ico ic-telegram">
                 <span class="plane-hitbox">
                     <span
                         class="plane-wrap"
                         class:plane-loop={planeState === "playing"}
                         onanimationend={planeAnimEnd}
                     >
-                        <TelegramIcon width="16" height="16" />
+                        <TelegramIcon width="18" height="18" />
                     </span>
                 </span>
-                telegram
             </span>
-            <span class="value"
+            <span class="uma-label">Telegram</span>
+            <span class="uma-value"
                 ><a href="https://t.me/cfelz" target="_blank">t.me/cfelz</a
                 ></span
             >
         </div>
-        <div class="row email-row">
-            <span class="label"><MailIcon width="16" height="16" /> email</span>
-            <span class="value">
+        <div class="uma-tile uma-row email-row">
+            <span class="uma-tile-ico ic-mail"><MailIcon width="18" height="18" /></span>
+            <span class="uma-label">Email</span>
+            <span class="uma-value">
                 {#if mounted}
-                    <spoiler-span reveal-duration="150" spawn-stop-delay="80"
-                        >{emailDisplay}</spoiler-span
+                    <spoiler-span
+                        reveal-duration="150"
+                        spawn-stop-delay="80"
+                        monitor-position="true">{emailDisplay}</spoiler-span
                     >
                 {:else}
-                    <span style="opacity:0">loading...</span>
+                    <span class="pending">Loading…</span>
                 {/if}
             </span>
         </div>
     </div>
-    <br />
-    <p class="section">some cool button's:</p>
-    <div class="buttons">
-        <a href="https://www.qbittorrent.org/" target="_blank">
-            <img src={seedtorrentsGif} alt="seed your torrent's!" height="31" />
-        </a>
-        <a href="https://m5rcel.neocities.org" target="_blank">
-            <img
-                src="https://m5rcel.neocities.org/hardware_central.gif"
-                width="88"
-                height="31"
-                alt="Woah Hardware Central"
-            />
-        </a>
-        <a href="https://m5rcel.neocities.org" target="_blank">
-            <img
-                src="https://m5rcel.neocities.org/hatems.jpg"
-                width="88"
-                height="31"
-                alt="#1 Microslop Hater"
-            />
-        </a>
-        <a href="https://m5rcel.neocities.org" target="_blank">
-            <img
-                src="https://m5rcel.neocities.org/linuxnow.jpg"
-                width="88"
-                height="31"
-                alt="Become a Linux user now!"
-            />
-        </a>
-        <a href="https://moxiu.vacpro.fyi" target="_blank">
-            <img
-                src={moxiusbuttonPng}
-                width="88"
-                height="31"
-                alt="my button!"
-            />
-        </a>
-        <a href="https://m5rcel.neocities.org" target="_blank">
-            <img
-                src="https://m5rcel.neocities.org/google_25wht.gif"
-                width="88"
-                height="31"
-                alt="Googol."
-            />
-        </a>
-        <a href="https://m5rcel.neocities.org" target="_blank">
-            <img
-                src="https://m5rcel.neocities.org/gmail.gif"
-                width="88"
-                height="31"
-                alt="Gmail"
-            />
-        </a>
-        <img src={piracyPng} width="88" height="31" alt="piracy now!" />
-        <img
-            src={containsJsPng}
-            width="88"
-            height="31"
-            alt="page contain's js!"
-        />
-        <img src={anybrowserPng} width="88" height="31" alt="any browser!" />
-        <img
-            src={anybrowserRuPng}
-            width="88"
-            height="31"
-            alt="any browser RU!"
-        />
-        <img
-            src={madewithnvimPng}
-            width="88"
-            height="31"
-            alt="made with nvim"
-        />
-        <a href="https://t.me/cfelz" target="_blank">
-            <img src={YourAdPng} width="88" height="31" alt="your ad" />
-        </a>
-    </div>
+
 </div>
 
 <style>
-    .content {
-        text-align: left;
-        max-width: 600px;
-        margin: 0 auto;
-        padding: 0 1rem;
-        box-sizing: border-box;
+    .intro {
+        padding: 14px 16px;
     }
     .hiii {
-        font-size: 1.2rem;
-        color: #cdd6f4;
-        margin-bottom: 0.5rem;
+        font-size: 1.28rem;
+        font-weight: 800;
+        color: var(--green-d);
     }
-    p {
-        font-size: 1rem;
-        color: #cdd6f4;
-    }
-    strong {
-        color: #f5c2e7;
-        font-weight: 600;
-    }
-    .section {
-        color: #f2cdcd;
-        font-weight: 600;
-        margin-bottom: 0.4rem;
-    }
-    .about {
-        display: flex;
-        flex-direction: column;
-        gap: 0.2rem;
-    }
-    .row {
-        display: flex;
-        gap: 0.5rem;
-        align-items: center;
-        padding: 0.15rem 0.3rem;
-        border-radius: 6px;
-        transition:
-            background-color 0.25s ease,
-            transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-    .row:hover {
-        background-color: rgba(203, 166, 247, 0.08);
-        transform: translateX(2px);
-    }
-    .label {
-        color: #6c7086;
-        font-size: 0.95rem;
-        min-width: 100px;
-        flex-shrink: 0;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        transition: color 0.25s ease;
-    }
-    .row:hover .label {
-        color: #cba6f7;
-    }
-    .row:hover .label :global(svg) {
-        transform: scale(1.15) rotate(-6deg);
-    }
-    .label :global(svg) {
-        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        flex-shrink: 0;
+    .intro .muted {
+        color: var(--ink-soft);
     }
 
-    .discord-row .label :global(svg) {
+    .ic-music {
+        background: linear-gradient(180deg, #c9a6f7, #a774e8);
+    }
+    .ic-anime {
+        background: linear-gradient(180deg, #ff9ec4, #f2607f);
+    }
+    .ic-color {
+        background: linear-gradient(180deg, #e0a3f5, #b06ae0);
+    }
+    .ic-cake {
+        background: linear-gradient(180deg, #8fd4f2, #52a9e2);
+    }
+    .ic-lang {
+        background: linear-gradient(180deg, #9ade63, #5da32c);
+    }
+    .ic-phone {
+        background: linear-gradient(180deg, #c3ccd8, #8ea0b3);
+    }
+    .ic-discord {
+        background: linear-gradient(180deg, #a3aef2, #6373e0);
+    }
+    .ic-telegram {
+        background: linear-gradient(180deg, #7fd4ee, #2fa3d8);
+    }
+    .ic-mail {
+        background: linear-gradient(180deg, #ffca8a, #f09a3c);
+    }
+
+    .discord-row .uma-tile-ico {
         transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .discord-row:hover .label :global(svg) {
+    .discord-row:hover .uma-tile-ico {
         transform: rotate(360deg);
     }
 
     .plane-hitbox {
         position: relative;
-        width: 16px;
-        height: 16px;
+        width: 18px;
+        height: 18px;
         overflow: hidden;
         display: inline-block;
         flex-shrink: 0;
@@ -361,36 +255,6 @@
         }
     }
 
-    .value {
-        color: #cdd6f4;
-        font-size: 0.95rem;
-        word-break: break-word;
-        min-width: 0;
-    }
-    .value img {
-        vertical-align: middle;
-        margin-right: 2px;
-    }
-    .value a {
-        color: #cba6f7;
-        text-decoration: none;
-    }
-    .value a:hover {
-        color: #fad6ff;
-        text-decoration: underline;
-    }
-    kbd {
-        display: block;
-        background: #1e1e2e;
-        color: #babbf1;
-        font-size: 0.85rem;
-        padding: 0.1rem 0.35rem;
-        border-radius: 4px;
-        border: 1px solid #313244;
-        font-family: monospace;
-        word-break: break-all;
-        margin-top: 0.15rem;
-    }
     .dot {
         display: inline-block;
         width: 11px;
@@ -399,19 +263,17 @@
         background: #fad6ff;
         margin-right: 4px;
         vertical-align: middle;
-        border: 0.5px solid #585b70;
+        border: 0.5px solid #b98fc4;
     }
-    .buttons {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.4rem;
-        align-items: center;
+
+    .pending {
+        color: var(--ink-soft);
+        font-size: 0.9rem;
     }
-    .buttons img {
-        display: block;
+
+    .email-row :global(spoiler-span) {
+        font-weight: 600;
+        color: var(--ink);
     }
-    .badge-break {
-        flex-basis: 100%;
-        height: 0;
-    }
+
 </style>
