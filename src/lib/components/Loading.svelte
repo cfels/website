@@ -6,6 +6,7 @@
 </script>
 
 <div class="uma-loading" class:is-close={closing}>
+	<div class="uma-loading-bg" aria-hidden="true"></div>
 	<div class="chara">
 		<div class="chara-img"><img src={specialWeek} alt="" /></div>
 		<UmaWordmark />

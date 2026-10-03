@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { cubicOut } from 'svelte/easing';
+	import { backOut, cubicIn, cubicOut } from 'svelte/easing';
 	import { page } from '$app/state';
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.png';
 	import caratPng from '$lib/assets/carat.png';
+	import clickSound from '$lib/assets/click_ound.mp3';
 	import Loading from '$lib/components/Loading.svelte';
 	import umapyoiLogo from '$lib/assets/logo/umapyoi.png';
 	import astonMachan from '$lib/assets/uma/aston-machan.gif';
@@ -16,7 +17,6 @@
 	import niceNature from '$lib/assets/uma/nice-nature.gif';
 	import tachyon from '$lib/assets/uma/tachyon.gif';
 
-	// import font
 	import '$lib/assets/fonts/momotrust.ttf';
 
 	import HomeIcon from '~icons/mingcute/home-4-line';
@@ -118,7 +118,6 @@
 		dragging = false;
 	}
 
-	/* ease the fall to a crawl under the cursor instead of freezing it */
 	function slowFaller(e: PointerEvent, rate: number) {
 		for (const anim of (e.currentTarget as HTMLElement).getAnimations()) {
 			if (typeof anim.updatePlaybackRate === 'function') anim.updatePlaybackRate(rate);
@@ -126,7 +125,52 @@
 		}
 	}
 
-	let { children, data } = $props();
+	let { children } = $props();
+
+	let panelBody: HTMLElement | undefined;
+	let contentH = $state(0);
+	let swapH = $state(0);
+	let heightInit = false;
+
+	$effect(() => {
+		const h = contentH;
+		if (!h || !panelBody) return;
+		if (!heightInit) {
+			heightInit = true;
+			panelBody.style.transition = 'none';
+			swapH = h;
+			requestAnimationFrame(() => requestAnimationFrame(() => panelBody?.style.removeProperty('transition')));
+			return;
+		}
+		swapH = h;
+	});
+
+	function popIn(_node: Element) {
+		return {
+			duration: 430,
+			delay: 130,
+			easing: backOut,
+			css: (t: number) =>
+				`opacity:${Math.min(1, t * 1.9)};transform:scale(${0.965 + 0.035 * t}) translateY(${(1 - t) * 10}px)`
+		};
+	}
+
+	function popOut(_node: Element) {
+		return {
+			duration: 150,
+			easing: cubicIn,
+			css: (t: number) =>
+				`position:absolute;left:0;right:0;top:0;opacity:${t};transform:scale(${0.99 + 0.01 * t}) translateY(${(t - 1) * 6}px)`
+		};
+	}
+
+	function trackHeight(node: HTMLElement) {
+		const report = () => {
+			if (node.isConnected) contentH = node.offsetHeight;
+		};
+		report();
+		requestAnimationFrame(report);
+	}
 
 	let leftUma = $state(0);
 	let rightUma = $state(Math.floor(umas.length / 2));
@@ -134,25 +178,126 @@
 	let closing = $state(false);
 	let railActive = $state(0);
 	let atTop = $state(true);
-	let taps = $state<{ id: number; x: number; y: number }[]>([]);
+	const STAR =
+		'M24 2C24.9 12.6 35.4 23.1 46 24 35.4 24.9 24.9 35.4 24 46 23.1 35.4 12.6 24.9 2 24 12.6 23.1 23.1 12.6 24 2Z';
+	const SHOE =
+		'M28.8352 27.0796C28.1482 26.4785 26.8315 25.9632 27.5757 24.8469C32.9573 17.0895 30.6959 4.69487 21.1636 1.48887C19.3316 0.830498 17.3851 0.515624 15.4671 0.515624C13.5492 0.515624 11.5741 0.859124 9.77068 1.48887C0.209768 4.7235 -2.02302 17.1181 3.35857 24.8469C4.10284 25.9346 2.78606 26.4785 2.09905 27.0796C1.64105 27.4517 1.58379 28.0815 1.95593 28.5109C2.75744 29.4269 3.58758 30.3429 4.41772 31.2302C4.81847 31.7169 5.44823 31.5737 5.87762 31.2302C7.91002 29.8849 9.91381 28.5395 11.9462 27.1941C12.1752 27.051 12.3183 26.8506 12.3756 26.593C12.4615 26.2209 12.3756 25.906 12.0607 25.6484C11.1733 24.8182 10.4863 23.8736 9.97106 22.7572C8.85466 20.2382 8.53978 16.8891 9.39855 14.2556C10.2859 11.4217 12.7764 9.876 15.4671 9.876C18.1579 9.876 20.6484 11.4217 21.5357 14.2556C22.3659 16.8891 22.0796 20.2382 20.9632 22.7572C20.448 23.845 19.761 24.8182 18.8736 25.6484C18.5873 25.906 18.4728 26.2209 18.5587 26.593C18.616 26.8506 18.7591 27.051 18.9881 27.1941C21.0205 28.5395 23.0243 29.8849 25.0567 31.2302C25.4861 31.5737 26.1158 31.6882 26.5166 31.2302C27.3467 30.3142 28.1482 29.4269 28.9784 28.5109C29.3791 28.0815 29.2933 27.4517 28.8352 27.0796Z';
+	const BURST_COLORS = [
+		'#f0b93f',
+		'#ef5aa0',
+		'#4aa8e0',
+		'#7ac943',
+		'#e8453c',
+		'#f5821f',
+		'#e2405e',
+		'#ec3f7d',
+		'#b06bd6',
+		'#6fd0e8'
+	];
+
+	const pickColor = () => BURST_COLORS[Math.floor(Math.random() * BURST_COLORS.length)];
+
+	function starImg(color: string, core = false) {
+		const paint = core
+			? `<defs><radialGradient id="s" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="${color}"/></radialGradient><filter id="b" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.6"/></filter></defs><g filter="url(#b)" opacity=".7"><path d="${STAR}" fill="url(#s)"/></g><path d="${STAR}" fill="url(#s)" fill-opacity=".42"/>`
+			: `<defs><filter id="b" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="1.5"/></filter></defs><g filter="url(#b)" opacity=".55"><path d="${STAR}" fill="${color}"/></g><path d="${STAR}" fill="${color}" fill-opacity=".4"/>`;
+		return `url('data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">${paint}</svg>`)}')`;
+	}
+
+	function shoeImg(color: string) {
+		return `url('data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 31 33"><path fill="${color}" fill-opacity=".48" d="${SHOE}"/></svg>`)}')`;
+	}
+
+	type Bit = {
+		dx: number;
+		dy: number;
+		size: number;
+		spin: number;
+		delay: number;
+		img: string;
+	};
+	let taps = $state<{ id: number; x: number; y: number; core: string; bits: Bit[] }[]>([]);
+	let sparks = $state<{ id: number; x: number; y: number; size: number; img: string }[]>([]);
 	let tapSeq = 0;
+	let sparkSeq = 0;
+	let held = false;
+	let heldX = 0;
+	let heldY = 0;
 
 	const title = $derived(titles[page.url.pathname] ?? 'Error');
 	const isActive = (href: string) =>
 		href === '/' ? page.url.pathname === '/' : page.url.pathname === href;
 
-	function spawnTap(e: MouseEvent) {
-		if (e.button !== 0) return;
-		if ((e.target as HTMLElement)?.closest('.fx-modal')) return;
+	function spawnTap(e: PointerEvent) {
+		if (e.button !== 0 || (e.target as HTMLElement)?.closest('.fx-modal')) return;
+		playClick();
+		held = true;
+		heldX = e.clientX;
+		heldY = e.clientY;
 		const id = ++tapSeq;
-		taps = [...taps, { id, x: e.clientX, y: e.clientY }];
+		const bits: Bit[] = Array.from({ length: 7 }, () => {
+			const angle = Math.random() * Math.PI * 2;
+			const dist = 26 + Math.random() * 40;
+			return {
+				dx: Math.cos(angle) * dist,
+				dy: Math.sin(angle) * dist,
+				size: 13 + Math.random() * 14,
+				spin: (Math.random() * 2 - 1) * 160,
+				delay: Math.random() * 0.07,
+				img: Math.random() < 0.42 ? shoeImg(pickColor()) : starImg(pickColor())
+			};
+		});
+		taps = [...taps, { id, x: e.clientX, y: e.clientY, core: starImg(pickColor(), true), bits }];
 		setTimeout(() => {
 			taps = taps.filter((t) => t.id !== id);
-		}, 520);
+		}, 1200);
+	}
+
+	function spawnTrail(e: PointerEvent) {
+		if (!held) return;
+		if ((e.clientX - heldX) ** 2 + (e.clientY - heldY) ** 2 < 196) return;
+		heldX = e.clientX;
+		heldY = e.clientY;
+		const id = ++sparkSeq;
+		sparks = [
+			...sparks,
+			{ id, x: e.clientX, y: e.clientY, size: 13 + Math.random() * 9, img: starImg(pickColor()) }
+		];
+		setTimeout(() => {
+			sparks = sparks.filter((s) => s.id !== id);
+		}, 620);
+	}
+
+	function releaseTap() {
+		held = false;
 	}
 
 	function onScroll() {
 		atTop = window.scrollY < 8;
+		if (parPending) return;
+		parPending = true;
+		requestAnimationFrame(applyParallax);
+	}
+
+	let bgEl: HTMLDivElement | undefined;
+	let parPending = false;
+	let parallaxOn = true;
+	let sfx: HTMLAudioElement | undefined;
+
+	function playClick() {
+		if (!sfx) return;
+		const node = sfx.paused ? sfx : (sfx.cloneNode() as HTMLAudioElement);
+		node.volume = sfx.volume;
+		node.currentTime = 0;
+		node.play().catch(() => {});
+	}
+
+	function applyParallax() {
+		parPending = false;
+		if (!bgEl) return;
+		const travel = window.innerHeight * 0.15;
+		const y = parallaxOn ? -Math.min(window.scrollY * 0.22, travel) : 0;
+		bgEl.style.setProperty('--par-y', `${y.toFixed(1)}px`);
 	}
 
 	function onKey(e: KeyboardEvent) {
@@ -161,28 +306,44 @@
 
 	onMount(() => {
 		onScroll();
-		for (const uma of umas) {
-			const img = new Image();
-			img.src = uma.src;
+		sfx = new Audio(clickSound);
+		sfx.preload = 'auto';
+		sfx.volume = 0.5;
+		if (window.matchMedia('(max-width: 700px)').matches) {
+			defaults.amount = 10;
+			fxAmount = defaults.amount;
 		}
+
+		const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } })
+			.connection;
+		const thrifty = !!conn?.saveData || /2g|slow/i.test(conn?.effectiveType ?? '');
+		const preload = (index: number) => {
+			if (thrifty) return;
+			const img = new Image();
+			img.decoding = 'async';
+			img.src = umas[index].src;
+		};
+
 		const timer = setInterval(() => {
 			leftUma = (leftUma + 1) % umas.length;
 			rightUma = (rightUma + 1) % umas.length;
+			preload((leftUma + 1) % umas.length);
 		}, 3500);
 
 		const timeouts: ReturnType<typeof setTimeout>[] = [];
 		let reduced = false;
 		try {
 			reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		} catch {
-			/* matchMedia unavailable */
-		}
+		} catch {}
 		if (reduced) {
 			booting = false;
 		} else {
-			timeouts.push(setTimeout(() => (closing = true), 650));
-			timeouts.push(setTimeout(() => (booting = false), 1700));
+			timeouts.push(setTimeout(() => (closing = true), 520));
+			timeouts.push(setTimeout(() => (booting = false), 1300));
+
+			timeouts.push(setTimeout(() => preload((leftUma + 1) % umas.length), 2100));
 		}
+		parallaxOn = !reduced;
 
 		return () => {
 			clearInterval(timer);
@@ -195,46 +356,63 @@
 	<link rel="icon" href={favicon} />
 </svelte:head>
 
-<svelte:window onclick={spawnTap} onscroll={onScroll} onkeydown={onKey} />
+<svelte:window
+	onpointerdown={spawnTap}
+	onpointermove={spawnTrail}
+	onpointerup={releaseTap}
+	onpointercancel={releaseTap}
+	onblur={releaseTap}
+	onscroll={onScroll}
+	onkeydown={onKey}
+/>
 
 {#if booting}
 	<Loading {closing} />
 {/if}
 
-<div class="uma-bg" aria-hidden="true"></div>
-<div class="uma-veil" aria-hidden="true"></div>
-<div class="uma-fallers" style="--curve:{curves[fxCurve].value};">
-	{#each fallers as f}
-		<button
-			type="button"
-			class="faller"
-			aria-label="Background effects"
-			title="Background effects"
-			onclick={() => (fxOpen = true)}
-			onpointerenter={(e) => slowFaller(e, 0.12)}
-			onpointerleave={(e) => slowFaller(e, 1)}
-			onpointercancel={(e) => slowFaller(e, 1)}
-			style="--carat:url({caratPng}); left:{f.left}; --dur:{f.dur}; --delay:{f.delay}; --size:{f.size}; --drift:{f.drift}; --spin:{f.spin}; --op:{f.opacity};"
-		></button>
-	{/each}
+<div class="uma-deco" class:is-booting={booting && !closing}>
+	<div class="uma-bg" aria-hidden="true" bind:this={bgEl}></div>
+	<div class="uma-veil" aria-hidden="true"></div>
+	<div class="uma-fallers" style="--curve:{curves[fxCurve].value};">
+		{#each fallers as f}
+			<button
+				type="button"
+				class="faller"
+				aria-label="Background effects"
+				title="Background effects"
+				onclick={() => (fxOpen = true)}
+				onpointerenter={(e) => slowFaller(e, 0.12)}
+				onpointerleave={(e) => slowFaller(e, 1)}
+				onpointercancel={(e) => slowFaller(e, 1)}
+				style="--carat:url({caratPng}); left:{f.left}; --dur:{f.dur}; --delay:{f.delay}; --size:{f.size}; --drift:{f.drift}; --spin:{f.spin}; --op:{f.opacity};"
+			></button>
+		{/each}
+	</div>
 </div>
 
 <div class="uma-tap-layer" aria-hidden="true">
+	{#each sparks as p (p.id)}
+		<span
+			class="uma-spark"
+			style="left:{p.x}px; top:{p.y}px; --s:{p.size.toFixed(1)}px; --img:{p.img};"
+		></span>
+	{/each}
 	{#each taps as t (t.id)}
-		<span class="uma-tap" style="left:{t.x}px; top:{t.y}px;">
-			<span class="ring"></span>
-			<span class="spark" style="--a:0deg"></span>
-			<span class="spark" style="--a:90deg"></span>
-			<span class="spark" style="--a:180deg"></span>
-			<span class="spark" style="--a:270deg"></span>
+		<span class="uma-tap" style="left:{t.x}px; top:{t.y}px; --core:{t.core};">
+			<span class="uma-tap-glow"></span>
+			<span class="uma-tap-ring"></span>
+			<span class="uma-tap-core"></span>
+			{#each t.bits as b}
+				<span
+					class="uma-bit"
+					style="--dx:{b.dx.toFixed(1)}px; --dy:{b.dy.toFixed(1)}px; --size:{b.size.toFixed(1)}px; --spin:{b.spin.toFixed(0)}deg; --delay:{b.delay.toFixed(2)}s; --img:{b.img};"
+				></span>
+			{/each}
 		</span>
 	{/each}
 </div>
 
 <header class="topbar">
-	<a class="brand" class:is-top={atTop} href="/" aria-label="UmaPyoi">
-		<img src={umapyoiLogo} alt="UmaPyoi" />
-	</a>
 	<div class="tb-right">
 		<span class="avatar">
 			{#key leftUma}
@@ -247,6 +425,10 @@
 		</span>
 	</div>
 </header>
+
+<a class="brand" class:is-top={atTop} href="/" aria-label="UmaPyoi">
+	<img src={umapyoiLogo} alt="UmaPyoi" />
+</a>
 
 <aside class="rail">
 	{#each rail as item, i}
@@ -268,15 +450,21 @@
 	<section class="panel">
 		<div class="panel-head">
 			<span class="ph-dots" aria-hidden="true"></span>
-			<span class="ph-title">{title}</span>
+			{#key title}
+				<span class="ph-title" in:fade={{ duration: 220 }}>{title}</span>
+			{/key}
 		</div>
-		<div class="panel-body">
-			{@render children()}
+		<div class="panel-body" bind:this={panelBody} style:height={swapH ? `${swapH}px` : null}>
+			{#key page.url.pathname}
+				<div class="page-swap" use:trackHeight in:popIn out:popOut>
+					{@render children()}
+				</div>
+			{/key}
 		</div>
 	</section>
 
 	<footer class="site-footer">
-		<p>Made with 🤍 by Moxiu · Last updated {data.lastUpdated} · <a href="https://github.com/cfels/website" target="_blank">Source code</a></p>
+		<p><a href="https://github.com/cfels/website" target="_blank">src</a></p>
 	</footer>
 </main>
 
@@ -299,7 +487,7 @@
 				<span class="tab-ico"><Icon width="24" height="24" /></span>
 				<span class="tab-label">{tab.label}</span>
 			</a>
-			{#if tab.badge}<span class="badge" aria-hidden="true">!</span>{/if}
+			{#if tab.badge}<span class="badge" aria-hidden="true"></span>{/if}
 		</span>
 	{/each}
 </nav>
@@ -371,7 +559,7 @@
 {/if}
 
 <style>
-	/* Register the font for CSS */
+
 	@font-face {
 		font-family: 'momotrust';
 		src: url('$lib/assets/fonts/momotrust.ttf') format('truetype');
@@ -380,14 +568,33 @@
 		font-display: swap;
 	}
 
-	/* ---------- background stage ---------- */
+	.uma-deco {
+		display: contents;
+	}
+
+	.uma-deco.is-booting {
+		display: none;
+	}
+
 	.uma-bg {
 		position: fixed;
-		inset: -50px;
+		left: -50px;
+
+		top: -15vh;
+		width: calc(100vw + 100px);
+		height: 130vh;
 		z-index: 0;
-		background: url('$lib/assets/bg/bg.png') center / cover no-repeat;
-		filter: blur(16px) brightness(0.48) saturate(1.15);
-		transform: scale(1.06);
+
+		background: url('$lib/assets/bg/bg.webp') center / cover no-repeat;
+		transform: translate3d(0, var(--par-y, 0px), 0) scale(1.06);
+		will-change: transform;
+	}
+
+	@supports (height: 100lvh) {
+		.uma-bg {
+			top: -15lvh;
+			height: 130lvh;
+		}
 	}
 
 	.uma-veil {
@@ -437,49 +644,52 @@
 		backface-visibility: hidden;
 	}
 
-	/* ---------- top bar ---------- */
 	.topbar {
 		position: fixed;
 		top: 0;
 		left: 0;
 		right: 0;
-		z-index: 30;
+
+		z-index: 70;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
 		height: 64px;
 		padding: 0 14px;
-		background: linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(246, 238, 223, 0.95));
+		overflow: visible;
+		background: linear-gradient(180deg, rgba(255, 252, 246, 0.95), rgba(246, 238, 223, 0.91));
 		border-bottom: 3px solid rgba(214, 197, 164, 0.9);
 		box-shadow: 0 8px 20px -12px rgba(40, 25, 5, 0.7);
-		backdrop-filter: blur(6px);
+		backdrop-filter: blur(10px) saturate(1.2);
 	}
 
 	.brand {
-		position: relative;
-		top: 0;
-		display: inline-flex;
-		align-items: flex-start;
+		position: fixed;
+		left: 14px;
+		top: 13px;
+
+		z-index: 90;
+		display: block;
+		line-height: 0;
 		text-decoration: none;
-		transform-origin: left top;
-		transition:
-			transform 0.3s cubic-bezier(0.19, 1, 0.22, 1),
-			top 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+		transition: top 0.3s cubic-bezier(0.19, 1, 0.22, 1);
 	}
 
-	/* official umamusume.com behaviour: the logo sits oversized at the top of the page
-	   and scales back into the bar once you scroll */
 	.brand.is-top {
-		transform: scale(2);
-		top: 2px;
+		top: 15px;
 	}
 
 	.brand img {
 		display: block;
-		height: 38px;
 		width: auto;
+		height: 38px;
 		filter: drop-shadow(0 2px 2px rgba(120, 80, 20, 0.28));
+		transition: height 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+	}
+
+	.brand.is-top img {
+		height: 76px;
 	}
 
 	.tb-right {
@@ -487,6 +697,7 @@
 		align-items: center;
 		gap: 10px;
 		min-width: 0;
+		margin-left: auto;
 	}
 
 	.avatar {
@@ -511,7 +722,6 @@
 		object-fit: contain;
 	}
 
-	/* ---------- right rail ---------- */
 	.rail {
 		position: fixed;
 		top: 84px;
@@ -575,7 +785,6 @@
 		place-items: center;
 	}
 
-	/* ---------- stage + panel ---------- */
 	.stage {
 		position: relative;
 		z-index: 5;
@@ -586,7 +795,6 @@
 		pointer-events: none;
 	}
 
-	/* let clicks reach the falling carats through the empty stage space */
 	.stage > * {
 		pointer-events: auto;
 	}
@@ -644,6 +852,11 @@
 		position: relative;
 		isolation: isolate;
 		padding: 4px 14px 18px;
+		transition: height 460ms cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
+	.page-swap {
+		min-width: 0;
 	}
 
 	.panel-body::before {
@@ -656,29 +869,31 @@
 		opacity: 0.4;
 	}
 
-	/* ---------- footer ---------- */
 	.site-footer {
 		margin-top: 18px;
 		text-align: center;
 		color: #f3e7cd;
+		font-family: var(--font);
 		text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 	}
 
 	.site-footer p {
 		margin: 0;
-		font-size: 0.84rem;
+		font-size: 0.76rem;
+		font-weight: 700;
+		letter-spacing: 0.15em;
 	}
 
 	.site-footer a {
-		color: #ffe9a8;
-		text-decoration: underline;
+		color: rgba(255, 243, 214, 0.52);
+		text-decoration: none;
+		transition: color 0.18s ease;
 	}
 
 	.site-footer a:hover {
-		color: #fff;
+		color: rgba(255, 255, 255, 0.86);
 	}
 
-	/* ---------- standee ---------- */
 	.standee {
 		position: fixed;
 		left: 20px;
@@ -706,13 +921,12 @@
 		object-fit: contain;
 	}
 
-	/* ---------- bottom nav ---------- */
 	.bottombar {
 		position: fixed;
 		left: 0;
 		right: 0;
 		bottom: 0;
-		z-index: 30;
+		z-index: 70;
 		display: flex;
 		align-items: flex-end;
 		justify-content: center;
@@ -783,7 +997,6 @@
 		height: 24px;
 	}
 
-	/* Game-style notification badge, floating above the button */
 	.badge {
 		position: absolute;
 		top: -9px;
@@ -793,11 +1006,6 @@
 		border-radius: 999px;
 		background: linear-gradient(180deg, #ff8aa8, #ee3f66);
 		border: 2px solid #fffdf8;
-		color: #fff;
-		font-size: 0.68rem;
-		font-weight: 700;
-		line-height: 15px;
-		text-align: center;
 		box-shadow: 0 2px 5px rgba(200, 40, 80, 0.5);
 		z-index: 2;
 	}
@@ -808,6 +1016,7 @@
 		inset: -4px;
 		border-radius: 999px;
 		border: 2px solid rgba(238, 63, 102, 0.65);
+		will-change: transform, opacity;
 		animation: badge-pulse 1.6s ease-out infinite;
 	}
 
@@ -822,7 +1031,6 @@
 		}
 	}
 
-	/* ---------- background fx: floating hud ---------- */
 	.fx-modal {
 		position: fixed;
 		z-index: 201;
@@ -1078,18 +1286,11 @@
 			display: none;
 		}
 		.stage {
-			padding: 96px 14px 116px;
+			padding: 104px 14px 116px;
 		}
 	}
 
 	@media (max-width: 760px) {
-		.brand img {
-			height: 32px;
-		}
-		.brand.is-top {
-			transform: scale(1.8);
-			top: 2px;
-		}
 		.tab {
 			width: 86px;
 			font-size: 0.68rem;
@@ -1097,13 +1298,6 @@
 	}
 
 	@media (max-width: 560px) {
-		.brand img {
-			height: 28px;
-		}
-		.brand.is-top {
-			transform: scale(1.8);
-			top: 2px;
-		}
 		.panel-head {
 			height: 40px;
 			margin: 8px 8px 4px;
@@ -1121,12 +1315,6 @@
 		}
 		.bottombar {
 			gap: 6px;
-		}
-	}
-
-	@media (max-width: 480px) {
-		.avatar {
-			display: none;
 		}
 	}
 
