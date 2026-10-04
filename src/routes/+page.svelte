@@ -205,7 +205,7 @@
         <p>I'm <strong>Moxiu</strong>, part time horse?</p>
         <p>
             Also, what do I do? Well, I mainly mess around with reverse
-            engineering, Linux and stuff — so I mostly do low-level work, but
+            engineering, Linux and stuff. so I mostly do low-level work, but
             not only!
         </p>
         <p class="muted">PS. Dualbooting sucks (my opinion).</p>
@@ -221,7 +221,7 @@
             <span class="uma-tile-ico ic-music"><MusicIcon width="18" height="18" /></span>
             <span class="uma-label">Fav Music</span>
             <span class="uma-value"
-                >Rap, hip-hop, etc. — if it's good, I listen to it.</span
+                >Rap, hip-hop, etc. (if it's good, I listen to it)</span
             >
         </div>
         <div class="uma-tile uma-row">
