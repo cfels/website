@@ -44,8 +44,6 @@
         });
     });
 
-    let planeState = $state<"idle" | "playing">("idle");
-
     let scrubTimer: ReturnType<typeof setTimeout> | undefined;
 
     function revealEmail() {
@@ -63,6 +61,7 @@
     type SpoilerEl = HTMLElement & {
         revealed?: boolean;
         particleManagers?: { stopSpawning(): void }[];
+        updateCanvasPositionsImmediate?: () => void;
     };
 
     function settleSpoiler(el: SpoilerEl) {
@@ -81,7 +80,48 @@
         const el = node as SpoilerEl;
         const touch = window.matchMedia("(hover: none), (max-width: 900px)").matches;
         let settle: ReturnType<typeof setTimeout> | undefined;
+        let raf = 0;
+        let watching = false;
+        const watcher = new MutationObserver(() => queueCursor());
+        const applyCursor = () => {
+            const shadow = el.shadowRoot;
+            if (!shadow) return false;
+            if (!watching) {
+                watching = true;
+                watcher.observe(shadow, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ["class"],
+                });
+            }
+            el.style.setProperty("cursor", "inherit");
+            if (!shadow.querySelector("style[data-uma-cursor]")) {
+                const style = document.createElement("style");
+                style.setAttribute("data-uma-cursor", "");
+                style.textContent = "div{cursor:inherit!important}";
+                shadow.appendChild(style);
+            }
+            const inner = shadow.querySelector<HTMLElement>("div");
+            if (inner && inner.style.getPropertyValue("cursor") !== "inherit")
+                inner.style.setProperty("cursor", "inherit", "important");
+            return true;
+        };
+        const queueCursor = () => {
+            if (raf) return;
+            raf = requestAnimationFrame(() => {
+                raf = 0;
+                applyCursor();
+            });
+        };
+        queueCursor();
+        let poll: ReturnType<typeof setInterval> | undefined;
+        if (!applyCursor())
+            poll = setInterval(() => {
+                if (applyCursor() && poll) clearInterval(poll);
+            }, 120);
         const onClick = () => {
+            applyCursor();
             revealEmail();
             if (!touch) return;
             clearTimeout(settle);
@@ -91,16 +131,70 @@
         return {
             destroy: () => {
                 clearTimeout(settle);
+                if (poll) clearInterval(poll);
+                if (raf) cancelAnimationFrame(raf);
+                watcher.disconnect();
                 node.removeEventListener("click", onClick);
             },
         };
     }
 
-    function planeEnter() {
-        if (planeState === "idle") planeState = "playing";
-    }
-    function planeAnimEnd() {
-        planeState = "idle";
+    function spoilerTrack(node: HTMLElement) {
+        const el = node as SpoilerEl;
+        const viewport = window.visualViewport;
+        let raf = 0;
+        let fast: ReturnType<typeof setTimeout> | undefined;
+        let slow: ReturnType<typeof setTimeout> | undefined;
+        let visible = true;
+        let dead = false;
+
+        const sync = () => {
+            raf = 0;
+            if (dead || !visible || el.revealed) return;
+            el.updateCanvasPositionsImmediate?.();
+        };
+        const schedule = () => {
+            if (!raf && !dead) raf = requestAnimationFrame(sync);
+        };
+        const onMove = () => {
+            schedule();
+            clearTimeout(fast);
+            clearTimeout(slow);
+            fast = setTimeout(schedule, 150);
+            slow = setTimeout(schedule, 550);
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            visible = entries[entries.length - 1].isIntersecting;
+            if (visible) schedule();
+        });
+        observer.observe(node);
+
+        window.addEventListener("scroll", onMove, { passive: true });
+        window.addEventListener("resize", onMove, { passive: true });
+        window.addEventListener("scrollend", onMove, { passive: true });
+        viewport?.addEventListener("resize", onMove);
+        viewport?.addEventListener("scroll", onMove);
+
+        const boot = setInterval(schedule, 80);
+        const bootStop = setTimeout(() => clearInterval(boot), 900);
+
+        return {
+            destroy() {
+                dead = true;
+                if (raf) cancelAnimationFrame(raf);
+                clearTimeout(fast);
+                clearTimeout(slow);
+                clearInterval(boot);
+                clearTimeout(bootStop);
+                observer.disconnect();
+                window.removeEventListener("scroll", onMove);
+                window.removeEventListener("resize", onMove);
+                window.removeEventListener("scrollend", onMove);
+                viewport?.removeEventListener("resize", onMove);
+                viewport?.removeEventListener("scroll", onMove);
+            },
+        };
     }
 
 </script>
@@ -188,14 +282,10 @@
                 ></span
             >
         </div>
-        <div class="uma-tile uma-row telegram-row" onmouseenter={planeEnter}>
+        <div class="uma-tile uma-row telegram-row">
             <span class="uma-tile-ico ic-telegram">
                 <span class="plane-hitbox">
-                    <span
-                        class="plane-wrap"
-                        class:plane-loop={planeState === "playing"}
-                        onanimationend={planeAnimEnd}
-                    >
+                    <span class="plane-wrap">
                         <TelegramIcon width="18" height="18" />
                     </span>
                 </span>
@@ -216,7 +306,8 @@
                         spawn-stop-delay="40"
                         particle-lifetime="50"
                         monitor-position={seekMonitor ? "true" : undefined}
-                        use:emailReveal>{emailDisplay}</spoiler-span
+                        use:emailReveal
+                        use:spoilerTrack>{emailDisplay}</spoiler-span
                     >
                 {:else}
                     <span class="pending">Loading…</span>
@@ -289,7 +380,7 @@
         left: 0;
         display: inline-flex;
     }
-    .plane-wrap.plane-loop {
+    .telegram-row:hover .plane-wrap {
         animation: plane-loop-anim 0.9s cubic-bezier(0.45, 0, 0.55, 1) forwards;
     }
     @keyframes plane-loop-anim {

@@ -645,7 +645,7 @@ body > canvas {
 		transform: translate(-50%, -50%) scale(0.2) rotate(0deg);
 	}
 	20% {
-		opacity: 1;
+		opacity: 0.62;
 		transform: translate(-50%, -50%) scale(1) rotate(30deg);
 	}
 	100% {

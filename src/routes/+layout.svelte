@@ -227,18 +227,23 @@
 	let held = false;
 	let heldX = 0;
 	let heldY = 0;
+	let tapCandidate: { id: number; x0: number; y0: number } | null = null;
+	let holdTimer: ReturnType<typeof setTimeout> | undefined;
+	let holding = false;
+	let clickBlockUntil = 0;
+	const TAP_SLOP = 14;
+	const HOLD_MS = 250;
 
 	const title = $derived(titles[page.url.pathname] ?? 'Error');
 	const isActive = (href: string) =>
 		href === '/' ? page.url.pathname === '/' : page.url.pathname === href;
 
-	function spawnTap(e: PointerEvent) {
+	function spawnTap(x: number, y: number) {
 		if (!fxEnabled) return;
-		if (e.button !== 0 || (e.target as HTMLElement)?.closest('.fx-modal')) return;
 		playClick();
 		held = true;
-		heldX = e.clientX;
-		heldY = e.clientY;
+		heldX = x;
+		heldY = y;
 		const id = ++tapSeq;
 		const bits: Bit[] = Array.from({ length: 7 }, () => {
 			const angle = Math.random() * Math.PI * 2;
@@ -252,29 +257,107 @@
 				img: Math.random() < 0.42 ? shoeImg(pickColor()) : starImg(pickColor())
 			};
 		});
-		taps = [...taps, { id, x: e.clientX, y: e.clientY, core: starImg(pickColor(), true), bits }];
+		taps = [...taps, { id, x, y, core: starImg(pickColor(), true), bits }];
 		setTimeout(() => {
 			taps = taps.filter((t) => t.id !== id);
 		}, 1200);
 	}
 
-	function spawnTrail(e: PointerEvent) {
+	function onPointerDown(e: PointerEvent) {
+		if (!fxEnabled) return;
+		if (e.button !== 0 || (e.target as HTMLElement)?.closest('.fx-modal')) return;
+		if (e.pointerType === 'mouse') {
+			spawnTap(e.clientX, e.clientY);
+			return;
+		}
+		if (tapCandidate) return;
+		tapCandidate = { id: e.pointerId, x0: e.clientX, y0: e.clientY };
+		clearTimeout(holdTimer);
+		holdTimer = setTimeout(() => {
+			if (!tapCandidate) return;
+			holding = true;
+			lockScroll();
+			spawnTap(tapCandidate.x0, tapCandidate.y0);
+		}, HOLD_MS);
+	}
+
+	function onPointerMove(e: PointerEvent) {
+		if (tapCandidate) {
+			if (tapCandidate.id !== e.pointerId) return;
+			if (!holding) {
+				const dx = e.clientX - tapCandidate.x0;
+				const dy = e.clientY - tapCandidate.y0;
+				if (dx * dx + dy * dy > TAP_SLOP ** 2) endPointer();
+				return;
+			}
+		}
+		emitTrail(e.clientX, e.clientY);
+	}
+
+	function onHoldTouchMove(e: TouchEvent) {
+		if (!holding) return;
+		if (e.cancelable) e.preventDefault();
+		const touch = e.touches[0];
+		if (touch) emitTrail(touch.clientX, touch.clientY);
+	}
+
+	function emitTrail(x: number, y: number) {
 		if (!fxEnabled || !held) return;
-		if ((e.clientX - heldX) ** 2 + (e.clientY - heldY) ** 2 < 196) return;
-		heldX = e.clientX;
-		heldY = e.clientY;
+		if ((x - heldX) ** 2 + (y - heldY) ** 2 < 196) return;
+		heldX = x;
+		heldY = y;
 		const id = ++sparkSeq;
 		sparks = [
 			...sparks,
-			{ id, x: e.clientX, y: e.clientY, size: 13 + Math.random() * 9, img: starImg(pickColor()) }
+			{ id, x, y, size: 13 + Math.random() * 9, img: starImg(pickColor()) }
 		];
 		setTimeout(() => {
 			sparks = sparks.filter((s) => s.id !== id);
 		}, 620);
 	}
 
-	function releaseTap() {
+	function onPointerUp(e: PointerEvent) {
+		if (tapCandidate) {
+			if (tapCandidate.id !== e.pointerId) return;
+			const { x0, y0 } = tapCandidate;
+			const engaged = holding;
+			endPointer();
+			if (engaged) clickBlockUntil = performance.now() + 450;
+			else spawnTap(x0, y0);
+			return;
+		}
 		held = false;
+	}
+
+	function endPointer() {
+		clearTimeout(holdTimer);
+		tapCandidate = null;
+		holding = false;
+		held = false;
+		unlockScroll();
+	}
+
+	function lockScroll() {
+		document.documentElement.style.overflow = 'hidden';
+		document.documentElement.style.overscrollBehavior = 'none';
+		window.addEventListener('touchmove', onHoldTouchMove, { passive: false });
+	}
+
+	function unlockScroll() {
+		document.documentElement.style.removeProperty('overflow');
+		document.documentElement.style.removeProperty('overscroll-behavior');
+		window.removeEventListener('touchmove', onHoldTouchMove);
+	}
+
+	function onContextMenu(e: MouseEvent) {
+		if (holding) e.preventDefault();
+	}
+
+	function onClickCapture(e: MouseEvent) {
+		if (performance.now() >= clickBlockUntil) return;
+		clickBlockUntil = 0;
+		e.stopPropagation();
+		e.preventDefault();
 	}
 
 	function onScroll() {
@@ -363,9 +446,15 @@
 		}
 		parallaxOn = !reduced && !light;
 
+		window.addEventListener('contextmenu', onContextMenu);
+		window.addEventListener('click', onClickCapture, true);
+
 		return () => {
 			if (timer) clearInterval(timer);
 			timeouts.forEach(clearTimeout);
+			window.removeEventListener('contextmenu', onContextMenu);
+			window.removeEventListener('click', onClickCapture, true);
+			endPointer();
 		};
 	});
 </script>
@@ -380,11 +469,11 @@
 </svelte:head>
 
 <svelte:window
-	onpointerdown={spawnTap}
-	onpointermove={spawnTrail}
-	onpointerup={releaseTap}
-	onpointercancel={releaseTap}
-	onblur={releaseTap}
+	onpointerdown={onPointerDown}
+	onpointermove={onPointerMove}
+	onpointerup={onPointerUp}
+	onpointercancel={endPointer}
+	onblur={endPointer}
 	onscroll={onScroll}
 	onkeydown={onKey}
 />
@@ -1232,33 +1321,46 @@
 			background: linear-gradient(180deg, rgba(255, 252, 246, 0.99), rgba(246, 238, 223, 0.97));
 			-webkit-backdrop-filter: none;
 			backdrop-filter: none;
+			transform: translateZ(0);
+			backface-visibility: hidden;
 		}
 
 		.bottombar {
 			background: linear-gradient(180deg, rgba(255, 252, 246, 0.97), rgba(246, 238, 223, 1));
 			-webkit-backdrop-filter: none;
 			backdrop-filter: none;
+			transform: translateZ(0);
+			backface-visibility: hidden;
 		}
 
 		.uma-bg {
 			top: 0;
 			left: 0;
-			width: 100vw;
-			height: 100vh;
+			right: 0;
+			bottom: 0;
+			width: auto;
+			height: auto;
+			background-color: #14100c;
 			background-image: url('$lib/assets/bg/bg_mobile.webp');
 			background-position: center;
-			transform: none;
+			background-size: cover;
+			transform: translateZ(0);
+			backface-visibility: hidden;
 			will-change: auto;
 		}
 
-		@supports (height: 100lvh) {
-			.uma-bg {
-				height: 100lvh;
-			}
+		.uma-veil {
+			transform: translateZ(0);
+			backface-visibility: hidden;
+		}
+
+		.uma-fallers {
+			contain: paint;
 		}
 
 		.faller {
 			filter: none;
+			backface-visibility: hidden;
 		}
 	}
 
