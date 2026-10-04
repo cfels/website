@@ -60,10 +60,39 @@
         }, 1200);
     }
 
+    type SpoilerEl = HTMLElement & {
+        revealed?: boolean;
+        particleManagers?: { stopSpawning(): void }[];
+    };
+
+    function settleSpoiler(el: SpoilerEl) {
+        el.particleManagers?.forEach((m) => m.stopSpawning());
+        const inner = el.shadowRoot?.querySelector("div");
+        if (inner?.classList.contains("revealed")) return;
+        for (const node of document.querySelectorAll("body > canvas")) node.remove();
+        el.revealed = true;
+        if (inner) {
+            inner.classList.remove("hidden", "revealing");
+            inner.classList.add("revealed");
+        }
+    }
+
     function emailReveal(node: HTMLElement) {
-        node.addEventListener("click", revealEmail);
+        const el = node as SpoilerEl;
+        const touch = window.matchMedia("(hover: none), (max-width: 900px)").matches;
+        let settle: ReturnType<typeof setTimeout> | undefined;
+        const onClick = () => {
+            revealEmail();
+            if (!touch) return;
+            clearTimeout(settle);
+            settle = setTimeout(() => settleSpoiler(el), 1100);
+        };
+        node.addEventListener("click", onClick);
         return {
-            destroy: () => node.removeEventListener("click", revealEmail),
+            destroy: () => {
+                clearTimeout(settle);
+                node.removeEventListener("click", onClick);
+            },
         };
     }
 
@@ -119,7 +148,7 @@
         <div class="uma-tile uma-row">
             <span class="uma-tile-ico ic-cake"><CakeIcon width="18" height="18" /></span>
             <span class="uma-label">Birthday</span>
-            <span class="uma-value">January 24 (15yo) [♒ Aquarius]</span>
+            <span class="uma-value">January 24 (15yo) ♒ Aquarius</span>
         </div>
         <div class="uma-tile uma-row">
             <span class="uma-tile-ico ic-lang"><TranslateIcon width="18" height="18" /></span>
@@ -301,6 +330,22 @@
     .email-row :global(spoiler-span) {
         font-weight: 600;
         color: var(--ink);
+    }
+
+    .email-row .uma-value {
+        flex: 1 0 auto;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 560px) {
+        .email-row .uma-label {
+            flex: 0 1 88px;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .email-row .uma-value {
+            font-size: 0.9rem;
+        }
     }
 
 </style>

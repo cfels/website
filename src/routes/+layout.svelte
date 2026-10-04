@@ -5,11 +5,12 @@
 	import { page } from '$app/state';
 	import '../app.css';
 	import favicon from '$lib/assets/favicon.png';
-	import caratPng from '$lib/assets/carat.png';
+	import caratImg from '$lib/assets/carat.webp';
 	import clickSound from '$lib/assets/click_ound.mp3';
 	import bgImg from '$lib/assets/bg/bg.webp';
+	import bgMobileImg from '$lib/assets/bg/bg_mobile.webp';
 	import Loading from '$lib/components/Loading.svelte';
-	import umapyoiLogo from '$lib/assets/logo/umapyoi.png';
+	import umapyoiLogo from '$lib/assets/logo/umapyoi.webp';
 	import astonMachan from '$lib/assets/uma/aston-machan.gif';
 	import daiwaScarlet from '$lib/assets/uma/daiwa-scarlet.gif';
 	import haruUrara from '$lib/assets/uma/haru-urara.gif';
@@ -23,7 +24,6 @@
 
 	import HomeIcon from '~icons/mingcute/home-4-line';
 	import ChatIcon from '~icons/mingcute/message-3-line';
-	import GithubIcon from '~icons/mingcute/github-line';
 	import GiftIcon from '~icons/mingcute/gift-line';
 
 	const umas = [
@@ -45,11 +45,6 @@
 		{ icon: HomeIcon, label: 'Home', href: '/' },
 		{ icon: ChatIcon, label: 'Yapping', href: 'https://x.com/moxiu_x', external: true },
 		{ icon: GiftIcon, label: 'Donate', href: '/donate', badge: true }
-	];
-
-	const rail = [
-		{ icon: GithubIcon, label: 'GitHub', href: 'https://github.com/cfels', external: true },
-		{ icon: ChatIcon, label: 'Yapping', href: 'https://x.com/moxiu_x', external: true }
 	];
 
 	const curves = {
@@ -172,13 +167,18 @@
 		};
 		report();
 		requestAnimationFrame(report);
+		const observer = new ResizeObserver(report);
+		observer.observe(node);
+		if ('fonts' in document) document.fonts.ready.then(report);
+		return {
+			destroy: () => observer.disconnect()
+		};
 	}
 
 	let leftUma = $state(0);
 	let rightUma = $state(Math.floor(umas.length / 2));
 	let booting = $state(true);
 	let closing = $state(false);
-	let railActive = $state(0);
 	let atTop = $state(true);
 	let light = $state(false);
 	let fxEnabled = false;
@@ -314,10 +314,15 @@
 
 		const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 		const compact = window.matchMedia('(max-width: 900px)').matches;
-		light = !fine || compact;
-		fxEnabled = fine;
+		let reduced = false;
+		try {
+			reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		} catch {}
 
-		if (fxEnabled) {
+		light = !fine || compact;
+		fxEnabled = !reduced;
+
+		if (!reduced) {
 			sfx = new Audio(clickSound);
 			sfx.preload = 'auto';
 			sfx.volume = 0.5;
@@ -339,11 +344,6 @@
 		};
 
 		const timeouts: ReturnType<typeof setTimeout>[] = [];
-		let reduced = false;
-		try {
-			reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		} catch {}
-
 		let timer: ReturnType<typeof setInterval> | undefined;
 		if (!light && !reduced) {
 			timer = setInterval(() => {
@@ -373,9 +373,10 @@
 <svelte:head>
 	<link rel="icon" href={favicon} />
 	<link rel="preload" as="image" href={specialWeek} fetchpriority="high" />
-	<link rel="preload" as="image" href={bgImg} />
+	<link rel="preload" as="image" href={bgImg} media="(hover: hover) and (min-width: 901px)" />
+	<link rel="preload" as="image" href={bgMobileImg} media="(hover: none), (max-width: 900px)" />
 	<link rel="preload" as="image" href={umapyoiLogo} />
-	<link rel="preload" as="image" href={caratPng} />
+	<link rel="preload" as="image" href={caratImg} />
 </svelte:head>
 
 <svelte:window
@@ -406,7 +407,7 @@
 				onpointerenter={(e) => slowFaller(e, 0.12)}
 				onpointerleave={(e) => slowFaller(e, 1)}
 				onpointercancel={(e) => slowFaller(e, 1)}
-				style="--carat:url({caratPng}); left:{f.left}; --dur:{f.dur}; --delay:{f.delay}; --size:{f.size}; --drift:{f.drift}; --spin:{f.spin}; --op:{f.opacity};"
+				style="--carat:url({caratImg}); left:{f.left}; --dur:{f.dur}; --delay:{f.delay}; --size:{f.size}; --drift:{f.drift}; --spin:{f.spin}; --op:{f.opacity};"
 			></button>
 		{/each}
 	</div>
@@ -451,22 +452,6 @@
 <a class="brand" class:is-top={atTop} href="/" aria-label="UmaPyoi">
 	<img src={umapyoiLogo} alt="UmaPyoi" />
 </a>
-
-<aside class="rail">
-	{#each rail as item, i}
-		{@const Icon = item.icon}
-		<a
-			class="rail-tab"
-			class:active={railActive === i}
-			href={item.href}
-			target={item.external ? '_blank' : undefined}
-			onclick={() => (railActive = i)}
-		>
-			<span class="rail-ico"><Icon width="20" height="20" /></span>
-			<span class="rail-label">{item.label}</span>
-		</a>
-	{/each}
-</aside>
 
 <main class="stage" id="top">
 	<section class="panel">
@@ -744,69 +729,6 @@
 		width: 100%;
 		height: 100%;
 		object-fit: contain;
-	}
-
-	.rail {
-		position: fixed;
-		top: 84px;
-		right: 10px;
-		z-index: 28;
-		display: flex;
-		flex-direction: column;
-		gap: 6px;
-		width: 78px;
-	}
-
-	.rail-tab {
-		position: relative;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 2px;
-		padding: 8px 4px 7px;
-		border-radius: 13px;
-		background: linear-gradient(180deg, #fffdf8, #f2e9d6);
-		border: 2px solid #e8dfc9;
-		color: var(--ink-soft);
-		font-size: 0.63rem;
-		font-weight: 700;
-		text-decoration: none;
-		text-align: center;
-		box-shadow: 0 2px 0 rgba(198, 183, 152, 0.55);
-		transition:
-			transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-			background 0.2s ease,
-			color 0.2s ease,
-			border-color 0.2s ease;
-	}
-
-	.rail-tab:hover {
-		transform: translateX(-4px) scale(0.96);
-		color: var(--green-d);
-	}
-
-	.rail-tab.active {
-		background: linear-gradient(180deg, var(--green-l), var(--green-d));
-		border-color: var(--green-d);
-		color: #fff;
-		box-shadow: 0 2px 0 rgba(74, 143, 32, 0.5), 0 6px 14px -6px rgba(74, 143, 32, 0.6);
-	}
-
-	.rail-tab.active::before {
-		content: '';
-		position: absolute;
-		left: -10px;
-		top: 50%;
-		width: 15px;
-		height: 15px;
-		border-radius: 3px;
-		background: var(--green);
-		transform: translateY(-50%) rotate(45deg);
-	}
-
-	.rail-ico {
-		display: grid;
-		place-items: center;
 	}
 
 	.stage {
@@ -1319,7 +1241,20 @@
 		}
 
 		.uma-bg {
+			top: 0;
+			left: 0;
+			width: 100vw;
+			height: 100vh;
+			background-image: url('$lib/assets/bg/bg_mobile.webp');
+			background-position: center;
+			transform: none;
 			will-change: auto;
+		}
+
+		@supports (height: 100lvh) {
+			.uma-bg {
+				height: 100lvh;
+			}
 		}
 
 		.faller {
@@ -1328,9 +1263,6 @@
 	}
 
 	@media (max-width: 1000px) {
-		.rail {
-			display: none;
-		}
 		.stage {
 			padding: 104px 14px 116px;
 		}

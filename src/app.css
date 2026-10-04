@@ -48,6 +48,7 @@
 }
 
 html {
+	-webkit-tap-highlight-color: transparent;
 	-webkit-text-size-adjust: 100%;
 	scrollbar-width: none;
 	-ms-overflow-style: none;
