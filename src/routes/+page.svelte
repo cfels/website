@@ -424,8 +424,9 @@
     }
 
     .email-row .uma-value {
-        flex: 1 0 auto;
-        white-space: nowrap;
+		flex: 1 1 auto;
+		white-space: normal;
+		overflow-wrap: anywhere;
     }
 
     @media (max-width: 560px) {

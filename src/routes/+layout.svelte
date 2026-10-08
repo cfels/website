@@ -10,6 +10,9 @@
 	import bgImg from '$lib/assets/bg/bg.webp';
 	import bgMobileImg from '$lib/assets/bg/bg_mobile.webp';
 	import Loading from '$lib/components/Loading.svelte';
+	import HomeIcon from '~icons/mingcute/home-4-line';
+	import ChatIcon from '~icons/mingcute/message-3-line';
+	import GiftIcon from '~icons/mingcute/gift-line';
 	import umapyoiLogo from '$lib/assets/logo/umapyoi.webp';
 	import astonMachan from '$lib/assets/uma/aston-machan.gif';
 	import daiwaScarlet from '$lib/assets/uma/daiwa-scarlet.gif';
@@ -22,9 +25,6 @@
 
 	import '$lib/assets/fonts/momotrust.ttf';
 
-	import HomeIcon from '~icons/mingcute/home-4-line';
-	import ChatIcon from '~icons/mingcute/message-3-line';
-	import GiftIcon from '~icons/mingcute/gift-line';
 
 	const umas = [
 		{ src: astonMachan, name: 'Aston Machan' },
@@ -42,8 +42,8 @@
 	};
 
 	const tabs = [
-		{ icon: HomeIcon, label: 'Home', href: '/' },
 		{ icon: ChatIcon, label: 'Yapping', href: 'https://x.com/moxiu_x', external: true },
+		{ icon: HomeIcon, label: 'Home', href: '/' },
 		{ icon: GiftIcon, label: 'Donate', href: '/donate', badge: true }
 	];
 
@@ -56,7 +56,7 @@
 
 	type Curve = keyof typeof curves;
 
-	const defaults = { speed: 1, amount: 14, drift: 1, spin: 1, curve: 'gravity' as Curve };
+	const defaults = { speed: 0.4, amount: 6, drift: 1, spin: 1, curve: 'gravity' as Curve };
 
 	let fxOpen = $state(false);
 	let fxSpeed = $state(defaults.speed);
@@ -82,6 +82,25 @@
 
 	function closeFx() {
 		fxOpen = false;
+	}
+
+	function focusDialog(node: HTMLElement) {
+		const previous = document.activeElement as HTMLElement | null;
+		const controls = () => Array.from(node.querySelectorAll<HTMLElement>('button, input'));
+		controls()[0]?.focus();
+		const trap = (event: KeyboardEvent) => {
+			if (event.key !== 'Tab') return;
+			const items = controls();
+			const first = items[0];
+			const last = items[items.length - 1];
+			if (event.shiftKey && document.activeElement === first) {
+				event.preventDefault(); last?.focus();
+			} else if (!event.shiftKey && document.activeElement === last) {
+				event.preventDefault(); first?.focus();
+			}
+		};
+		node.addEventListener('keydown', trap);
+		return { destroy() { node.removeEventListener('keydown', trap); previous?.focus(); } };
 	}
 
 	function resetFx() {
@@ -412,7 +431,7 @@
 		}
 
 		if (light) {
-			defaults.amount = 8;
+			defaults.amount = 4;
 			fxAmount = defaults.amount;
 		}
 
@@ -526,7 +545,7 @@
 
 <header class="topbar">
 	<div class="tb-right">
-		<span class="avatar">
+		<span class="avatar" style="corner-shape: squircle;">
 			{#key leftUma}
 				<img
 					src={umas[leftUma].src}
@@ -565,7 +584,7 @@
 </main>
 
 {#if !booting && !light}
-	<div class="standee" aria-hidden="true">
+	<div class="standee" aria-hidden="true" style="corner-shape: squircle;">
 		{#key rightUma}
 			<img src={umas[rightUma].src} alt="" transition:fade={{ duration: 600, easing: cubicOut }} />
 		{/key}
@@ -575,12 +594,14 @@
 <nav class="bottombar">
 	{#each tabs as tab}
 		{@const Icon = tab.icon}
-		<span class="tab-wrap">
+		<span class="tab-wrap" class:home-tab={tab.href === '/'} class:donate-tab={tab.href === '/donate'}>
 			<a
 				class="tab"
 				class:active={isActive(tab.href)}
 				href={tab.href}
 				target={tab.external ? '_blank' : undefined}
+				rel={tab.external ? 'noopener noreferrer' : undefined}
+				aria-current={isActive(tab.href) ? 'page' : undefined}
 			>
 				<span class="tab-ico"><Icon width="24" height="24" /></span>
 				<span class="tab-label">{tab.label}</span>
@@ -591,10 +612,13 @@
 </nav>
 
 {#if fxOpen}
+	<button class="fx-backdrop" aria-label="Close background effects" onclick={closeFx}></button>
 	<div
 		class="fx-modal"
 		class:dragging
 		role="dialog"
+		aria-modal="true"
+		use:focusDialog
 		aria-label="Background effects"
 		style="translate:{fxPos.x}px {fxPos.y}px"
 	>
@@ -617,22 +641,22 @@
 		<div class="fx-body">
 			<div class="fx-row">
 				<span class="fx-name">Fall Speed</span>
-				<input type="range" min="0.4" max="2.5" step="0.1" bind:value={fxSpeed} />
+				<input aria-label="Fall speed" type="range" min="0.4" max="2.5" step="0.1" bind:value={fxSpeed} />
 				<b>{fxSpeed.toFixed(1)}×</b>
 			</div>
 			<div class="fx-row">
 				<span class="fx-name">Amount</span>
-				<input type="range" min="4" max="30" step="1" bind:value={fxAmount} />
+				<input aria-label="Amount" type="range" min="4" max="30" step="1" bind:value={fxAmount} />
 				<b>{fxAmount}</b>
 			</div>
 			<div class="fx-row">
 				<span class="fx-name">Drift</span>
-				<input type="range" min="0" max="2.5" step="0.1" bind:value={fxDrift} />
+				<input aria-label="Drift" type="range" min="0" max="2.5" step="0.1" bind:value={fxDrift} />
 				<b>{fxDrift.toFixed(1)}×</b>
 			</div>
 			<div class="fx-row">
 				<span class="fx-name">Spin</span>
-				<input type="range" min="0" max="2.5" step="0.1" bind:value={fxSpin} />
+				<input aria-label="Spin" type="range" min="0" max="2.5" step="0.1" bind:value={fxSpin} />
 				<b>{fxSpin.toFixed(1)}×</b>
 			</div>
 			<div class="fx-curve">
@@ -1408,4 +1432,116 @@
 			animation: none;
 		}
 	}
+	/* Game frame: keep the original .brand animation rules above untouched. */
+	.topbar {
+		background: linear-gradient(120deg, #fffdf3 15%, #f3efdf 60%, #fffaf0);
+		border-bottom: 3px solid #c3b491;
+		box-shadow: 0 2px 0 #fff6db, 0 8px 24px #0005;
+		padding-right: 28px;
+	}
+	.avatar { border-radius: 27%; width: 43px; height: 43px; }
+	.stage { padding: 112px 32px 112px; max-width: 1040px; }
+	.panel { max-width: 760px; border-radius: 15px; border: 4px solid #fffdf8; background: linear-gradient(125deg,#fffdf7,#f2eee5); box-shadow: 0 0 0 1px #8e8290, 0 3px 0 2px #b2a6a2, 0 22px 70px #080b166e; }
+	.panel-head { height: 54px; margin: 0 0 12px; border-radius: 10px 10px 0 0; background: linear-gradient(#93d513,#69b500); box-shadow: inset 0 2px #d9f399, inset 0 -2px #529617, 0 3px #d3ccba; }
+	.ph-dots {
+		position: absolute; inset: 0; border-radius: inherit;
+		background: repeating-linear-gradient(45deg,transparent 0 11px,#4a930a55 11px 13px,transparent 13px 24px), repeating-linear-gradient(-45deg,transparent 0 11px,#4a930a55 11px 13px,transparent 13px 24px);
+		opacity: .6;
+		mask-image: radial-gradient(ellipse 110px 32px at center, #0005 0%, #0008 45%, #000d 78%, black 100%), linear-gradient(to bottom, #0006, black 8px, black calc(100% - 6px), #0008);
+		mask-composite: intersect;
+	}
+	.ph-title { flex-shrink: 0; font-size: 23px; line-height: 1.2; letter-spacing: .02em; font-weight: 800; }
+	.panel-body { padding: 0 20px 22px; }
+	.panel-body::before { opacity: .12; }
+	.uma-veil { background: radial-gradient(ellipse at 50% 35%,#33464233, #111622a8 70%), linear-gradient(120deg,#1315288c,#37291e70), repeating-linear-gradient(112deg,#ffffff03 0 1px,transparent 1px 28px); }
+	.uma-fallers { opacity: .48; }
+	.standee { left: max(24px, calc(50% - 620px)); bottom: 90px; width: 144px; height: 144px; border-radius: 27%; background: linear-gradient(135deg,#fffdf1,#e5e3db); animation: standee-bob 3.6s ease-in-out infinite; box-shadow: 0 0 0 2px #ba9e69, 0 8px 0 #584c4c55, 0 16px 30px #0005; }
+	.standee::after { content: 'UMAPYOI!'; position: absolute; bottom: 0; left: 0; right: 0; background: #79b824; color: white; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-align: center; padding: 3px; }
+	.standee img { height: calc(100% - 21px); }
+	.bottombar {
+		--dock-width: 294px;
+		--dock-height: 52px;
+		--dock-pop: cubic-bezier(.22, 1.45, .36, 1);
+		--dock-settle: cubic-bezier(.2, .8, .3, 1);
+		left: 50%; right: auto; bottom: max(14px, env(safe-area-inset-bottom));
+		transform: translateX(-50%);
+		width: min(var(--dock-width), calc(100% - 32px));
+		box-sizing: border-box; gap: 0; padding: 0;
+		border: 2px solid #fffaf1; border-radius: 11px;
+		background: linear-gradient(#fff,#e9e6ed);
+		box-shadow: 0 0 0 1px #aca2b4, 0 3px 0 #7e788c, 0 8px 18px #0005;
+		backdrop-filter: none;
+	}
+	.tab-wrap { flex: 1; min-width: 0; height: var(--dock-height); display: flex; align-items: flex-end; justify-content: center; transition: transform .38s var(--dock-pop); }
+	.tab-wrap.home-tab { flex: 1.4; }
+	.tab-wrap + .tab-wrap { border-left: 1px dashed #c2bbc8; }
+	.tab {
+		isolation: isolate;
+		width: 100%; box-sizing: border-box; height: var(--dock-height);
+		padding: 0 3px 4px; gap: 1px; border: 0; border-radius: 0;
+		background: linear-gradient(135deg,#fff9 35%,#e3dfe980 35%,#f7f5fa60 67%);
+		box-shadow: none; color: #766578; justify-content: flex-end;
+		transition: height .38s var(--dock-pop), color .18s var(--dock-settle), filter .18s var(--dock-settle), transform .18s var(--dock-pop);
+	}
+	.tab-wrap:first-child .tab { border-radius: 9px 0 0 9px; }
+	.tab-wrap:last-child .tab { border-radius: 0 9px 9px 0; }
+	.tab-ico { height: 29px; width: 29px; margin: -5px 0 1px; filter: drop-shadow(0 1px 0 white) drop-shadow(0 -1px 0 white) drop-shadow(1px 0 0 white) drop-shadow(-1px 0 0 white); transition: width .38s var(--dock-pop), height .38s var(--dock-pop), margin .38s var(--dock-pop), filter .18s var(--dock-settle); }
+	.tab-ico :global(svg) { width: 29px; height: 29px; transition: width .38s var(--dock-pop), height .38s var(--dock-pop); }
+	.tab-label { font-size: 18px; font-weight: 800; line-height: 1.05; flex-shrink: 0; transform: scale(.833333); transform-origin: center bottom; -webkit-text-stroke: 3px #fff; paint-order: stroke fill; text-shadow: 0 2px 1px #64566d40; transition: transform .3s cubic-bezier(.175,.885,.32,1.275), color .18s var(--dock-settle), -webkit-text-stroke-color .18s var(--dock-settle), text-shadow .18s var(--dock-settle); }
+	.tab-wrap:has(.tab.active) { transform: none; z-index: 2; border-left-color: transparent; }
+	.tab.active {
+		height: var(--dock-height); margin: 0;
+		width: 100%; border: 0; border-radius: 0;
+		background: none; box-shadow: none; color: #fff;
+	}
+	.tab::before {
+		content: ''; position: absolute; inset: 0; z-index: -1;
+		border-radius: inherit; opacity: 0;
+		background: linear-gradient(110deg,#62d8ef,#26b4eb 50%,#61d1ef);
+		box-shadow: inset 0 3px #bcf4ff, inset 2px 0 #9eeafb, inset -2px 0 #9eeafb;
+		transition: opacity .16s var(--dock-settle);
+	}
+	/* Keep the raised silhouette rounded even while its selection fades out. */
+	.home-tab .tab { background: none; }
+	.home-tab .tab::before { border-radius: 50% 50% 0 0 / 13px 13px 0 0; }
+	.tab.active::before { opacity: 1; }
+	.tab.active .tab-ico { filter: drop-shadow(0 2px 0 #2183b8); }
+	.tab.active .tab-label { -webkit-text-stroke: 3px #2987b6; text-shadow: 0 2px #226e9c; }
+	.donate-tab .tab.active { height: var(--dock-height); width: 100%; margin: 0; border-radius: 0 9px 9px 0; }
+	.donate-tab .tab.active .tab-ico { width: 27px; height: 27px; }
+	.donate-tab .tab.active .tab-ico :global(svg) { width: 27px; height: 27px; }
+	.tab-wrap:hover { transform: translateY(-4px); }
+	.home-tab:hover, .donate-tab:hover, .tab-wrap:has(.tab.active):hover { transform: none; }
+	.donate-tab .tab:hover { filter: brightness(1.06); }
+	.home-tab .tab.active, .home-tab:has(.tab:focus-visible) .tab { height: calc(var(--dock-height) + 14px); color: white; background: none; }
+	.home-tab .tab.active::before, .home-tab:has(.tab:focus-visible) .tab::before { opacity: 1; border-radius: 50% 50% 0 0 / 13px 13px 0 0; }
+	.home-tab .tab.active .tab-ico, .home-tab:has(.tab:focus-visible) .tab-ico { width: 33px; height: 33px; margin-bottom: 2px; filter: drop-shadow(0 2px 0 #2183b8); }
+	.home-tab .tab.active .tab-ico :global(svg), .home-tab:has(.tab:focus-visible) .tab-ico :global(svg) { width: 33px; height: 33px; }
+	.home-tab .tab.active .tab-label, .home-tab:has(.tab:focus-visible) .tab-label { transform: scale(1); -webkit-text-stroke: 3px #2987b6; text-shadow: 0 2px #226e9c; }
+	@media (hover: hover) {
+		.home-tab:hover .tab { height: calc(var(--dock-height) + 14px); color: white; background: none; }
+		.home-tab:hover .tab::before { opacity: 1; border-radius: 50% 50% 0 0 / 13px 13px 0 0; }
+		.home-tab:hover .tab-ico { width: 33px; height: 33px; margin-bottom: 2px; filter: drop-shadow(0 2px 0 #2183b8); }
+		.home-tab:hover .tab-ico :global(svg) { width: 33px; height: 33px; }
+		.home-tab:hover .tab-label { transform: scale(1); -webkit-text-stroke: 3px #2987b6; text-shadow: 0 2px #226e9c; }
+	}
+	.tab:active { transform: translateY(2px) scale(.985); }
+	.badge { width: 11px; height: 11px; right: 4px; top: -7px; }
+	.fx-backdrop { position: fixed; inset: 0; z-index: 100; background: #0d111780; backdrop-filter: blur(5px); border: 0; }
+	.fx-modal { z-index: 110; border: 4px solid #fffaf4; outline: 1px solid #8b8193; border-radius: 13px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+	.fx-head { background: linear-gradient(#92d815,#6cb500); color: white; }
+	.fx-title { color: white; text-shadow: 0 1px #518525; }
+	.fx-body { background: #f5f2ec; }
+	@media (max-width: 1000px) { .stage { padding: 112px 24px 112px; } }
+	@media (max-width: 700px) {
+		.topbar { padding-right: 15px; }
+		.stage { padding: 104px 12px 112px; }
+		.panel-body { padding: 0 12px 16px; }
+		.panel-head { height: 46px; margin: 0 0 10px; }
+		.ph-title { font-size: 21px; }
+		.bottombar { --dock-width: 258px; --dock-height: 48px; transform: translateX(-50%); }
+	}
+	@media (prefers-reduced-motion: reduce) { .tab-wrap,.tab,.tab::before,.tab-ico,.tab-ico :global(svg),.tab-label,.panel-body { transition: none; } .standee { animation: none; } }
+	.fx-modal { top: 50%; left: 50%; right: auto; width: min(440px, calc(100vw - 44px)); transform: translate(-50%, -50%); animation: none; }
+	@media (min-width: 701px) and (max-height: 1150px) { .stage { padding-top: 102px; } .panel-head { height: 45px; margin-bottom: 10px; } .panel-body { padding-bottom: 17px; } }
 </style>

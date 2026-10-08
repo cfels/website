@@ -1,6 +1,7 @@
 <script>
 	import { page } from '$app/state';
 
+	/** @type {Record<string | number, string>} */
 	const faces = {
 		404: '>_<',
 		403: '•_•',
