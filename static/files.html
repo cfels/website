@@ -42,10 +42,12 @@
         <p id="text-message" role="status" hidden></p>
         <pre class="text-file-content" tabindex="0" aria-label="File contents"><code id="text-content"></code></pre>
       </section>
-      <details id="owner-tools" class="owner-upload" data-folder="">
+      <details id="owner-tools" class="owner-upload" data-folder="" open>
         <summary>Webmaster tools</summary>
-        <form id="owner-token-form" action="/api/files/upload" method="post" autocomplete="on" aria-label="Upload token">
-          <p><label for="owner-token">upload token</label><input id="owner-token" name="password" type="password" required minlength="32" autocomplete="current-password" autocapitalize="none" spellcheck="false"></p>
+        <form id="owner-token-form" name="login" action="/api/files/upload" method="post" autocomplete="on" aria-label="Owner sign in">
+          <input name="username" type="hidden" autocomplete="username" value="owner">
+          <p><label for="owner-token">Upload password (token)</label><input id="owner-token" name="password" type="password" required minlength="32" autocomplete="current-password" autocapitalize="none" spellcheck="false"></p>
+          <button type="submit">Use token</button>
         </form>
         <form id="folder-form">
           <p><label for="folder-name">New folder name</label><input id="folder-name" type="text" required maxlength="255" autocomplete="off"></p>

@@ -16,7 +16,11 @@ if (tools) {
   let actionPending = false;
   let uploadCancelled = false;
 
-  tokenForm.addEventListener('submit', event => event.preventDefault());
+  tokenForm.addEventListener('submit', event => {
+    event.preventDefault();
+    if (actionPending || !token.reportValidity()) return;
+    status.textContent = 'Token ready. Choose files to upload or create a folder.';
+  });
 
   function ownerHeaders() {
     return { Authorization: `Bearer ${token.value}`, 'X-File-Folder': tools.dataset.folder };

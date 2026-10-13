@@ -2,27 +2,32 @@
 @font-face { font-family: 'Comic Sans MS'; src: url('assets/fonts/comic-bold.eot'); font-weight: 700; }
 @font-face { font-family: Verdana; src: url('assets/fonts/verdana.eot'); font-weight: 400; }
 @font-face { font-family: Tahoma; src: url('assets/fonts/tahoma.eot'); font-weight: 400; }
+@font-face { font-family: 'Moxiu Japanese'; src: url('assets/fonts/japanese.eot'); font-weight: 400; }
+@font-face { font-family: 'Moxiu Japanese'; src: url('assets/fonts/japanese-bold.eot'); font-weight: 700; }
 main, header, footer, nav, section, article, aside, figure, figcaption, details, summary { display: block; }
 [hidden], #owner-tools { display: none; }
 a:focus, button:focus, input:focus, .text-file-content:focus { outline: 2px dotted #000; }
 .site { min-height: 100%; }
-.titlebar { position: relative; display: block; background: #ef83b3; padding-right: 56px; }
+.titlebar { position: relative; display: block; background: #ef83b3 url('assets/titlebar.png') repeat-y; padding-right: 56px; }
 .titlebar > span { vertical-align: middle; }
 .window-controls { position: absolute; top: 2px; right: 3px; }
-.menubar { display: block; background: #ededed; }
+.menubar { display: block; background: #ededed url('assets/chrome-stripe.png') repeat; }
 .menubar a { display: inline-block; margin-right: 13px; }
-.toolbar { display: block; background: #ededed; white-space: nowrap; }
+.toolbar { display: block; background: #ededed url('assets/chrome-stripe.png') repeat; white-space: nowrap; }
 .toolbar button, .tool-home { display: inline-block; vertical-align: middle; margin-right: 5px; background: #ef83b3; text-align: center; }
+.toolbar button[data-reload] { font-size: 0; background: #ef83b3 url('assets/reload.png') center center no-repeat; }
 .arrow { display: inline-block; vertical-align: middle; }
 .arrow:before { position: absolute; left: -3px; top: -3px; content: ''; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-right: 6px solid white; }
+.arrow.right { transform: none; }
 .arrow.right:before { left: 9px; border-right: 0; border-left: 6px solid white; }
 .house { display: inline-block; }
 .house:before { content: ''; position: absolute; top: 2px; left: 3px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 7px solid white; }
 .address { display: inline-block; width: 510px; vertical-align: middle; }
-.graphic-menu { display: block; white-space: nowrap; }
-.graphic-menu a { display: inline-block; margin-right: 5px; vertical-align: middle; }
+.graphic-menu { display: block; overflow: hidden; }
+.graphic-menu a { float: left; width: 108px; height: 23px; margin-right: 5px; }
+.graphic-menu img { display: block; width: 108px; height: 23px; }
 .menu-greeting { display: none; }
-.masthead { position: relative; display: block; background: #e6e6e6; padding-top: 10px; }
+.masthead { position: relative; display: block; background: #e6e6e6 url('assets/masthead.png') repeat-x; }
 .mini-banner { position: absolute; top: 7px; right: 12px; display: block; }
 .mini-banner > a { float: left; margin-right: 5px; }
 .mini-banner span { display: block; padding-top: 7px; }
@@ -35,14 +40,14 @@ a:focus, button:focus, input:focus, .text-file-content:focus { outline: 2px dott
 .profile-snippet { display: block; overflow: hidden; }
 .profile-snippet > a { float: left; margin-right: 10px; }
 .profile-snippet p { margin-left: 87px; }
-.fan-stamp { width: 100%; height: auto; }
+.fan-stamp { width: 100%; height: 83px; }
 .gallery { display: block; overflow: hidden; }
 .gallery figure { float: left; width: 24%; height: 224px; margin: 0 1% 9px 0; }
 .gallery figure a { display: block; height: 188px; line-height: 188px; }
 .gallery figure img { width: auto; height: auto; max-width: 100%; max-height: 188px; }
 .button-strip { display: block; text-align: center; }
 .button-strip > img, .button-strip a { display: inline-block; margin: 0 9px; }
-.footer-status { background: #ededed; }
+.footer-status { background: #ededed url('assets/chrome-stripe.png') repeat; }
 .file-search-controls, .text-file-actions { display: block; }
 .file-search input { width: 78%; margin-right: 6px; }
 .file-search-results, .file-list td:first-child, .text-file-content, .hardware-list li, .address-book a, .address-book span, .coin code, .link-button code { word-wrap: break-word; }

@@ -7,7 +7,9 @@
     var images = document.getElementsByTagName('img');
     var links = document.getElementsByTagName('a');
     for (i = 0; i < images.length; i++) {
-      if (/\.webp$/.test(images[i].src)) images[i].src = images[i].src.replace(/\.webp$/, '.png');
+      if (/\.webp$/.test(images[i].src)) {
+        images[i].src = images[i].src.replace(/\.webp$/, /(^|\s)fan-stamp(\s|$)/.test(images[i].className) ? '-stamp.png' : '.png');
+      }
     }
     for (i = 0; i < links.length; i++) {
       if (/\.webp$/.test(links[i].href)) links[i].href = links[i].href.replace(/\.webp$/, '.png');

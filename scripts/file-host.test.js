@@ -377,6 +377,9 @@ test('the token field supports password autofill without putting credentials in 
   const html = await (await fetch(origin + '/files/')).text();
   let tokenForm;
   let tokenField;
+  let usernameField;
+  let ownerExpanded;
+  let tokenSubmit = false;
   await new HTMLRewriter()
     .on('#owner-token-form', { element(element) {
       tokenForm = { method: element.getAttribute('method'), action: element.getAttribute('action'), autocomplete: element.getAttribute('autocomplete') };
@@ -384,9 +387,17 @@ test('the token field supports password autofill without putting credentials in 
     .on('#owner-token', { element(element) {
       tokenField = { name: element.getAttribute('name'), type: element.getAttribute('type'), autocomplete: element.getAttribute('autocomplete'), value: element.getAttribute('value') };
     } })
+    .on('#owner-token-form input[name="username"]', { element(element) {
+      usernameField = { type: element.getAttribute('type'), autocomplete: element.getAttribute('autocomplete'), value: element.getAttribute('value') };
+    } })
+    .on('#owner-tools', { element(element) { ownerExpanded = element.hasAttribute('open'); } })
+    .on('#owner-token-form button[type="submit"]', { element() { tokenSubmit = true; } })
     .transform(new Response(html)).text();
   expect(tokenForm).toEqual({ method: 'post', action: '/api/files/upload', autocomplete: 'on' });
   expect(tokenField).toEqual({ name: 'password', type: 'password', autocomplete: 'current-password', value: null });
+  expect(usernameField).toEqual({ type: 'hidden', autocomplete: 'username', value: 'owner' });
+  expect(ownerExpanded).toBe(true);
+  expect(tokenSubmit).toBe(true);
   expect(html).not.toContain(token);
   const response = await fetch(origin + '/api/files/upload', {
     method: 'POST',

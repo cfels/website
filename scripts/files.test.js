@@ -207,6 +207,13 @@ test('submitting the token-only form prevents navigation and never sends a crede
   expect(requests).toHaveLength(0);
   expect(folderRequests).toHaveLength(0);
   expect(elements['owner-token'].value).toBe(token);
+  expect(elements['owner-status'].textContent).toBe('Token ready. Choose files to upload or create a folder.');
+});
+
+test('a missing or invalid autofilled token is not marked ready', () => {
+  const { elements } = setup([], false);
+  elements['owner-token-form'].dispatch('submit', { preventDefault() {} });
+  expect(elements['owner-status'].textContent).toBe('');
 });
 
 test('an autofilled token is read at upload time without needing a keyboard or input event', async () => {

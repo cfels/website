@@ -35,7 +35,7 @@ test('frame navigation works with IE8 click handlers', async () => {
 
 test('legacy setup enables semantic elements and replaces unsupported artwork and gallery links', async () => {
   const elements = [];
-  const images = [{ src: 'http://localhost/assets/luckybg_main.webp' }, { src: 'http://localhost/assets/logo.png' }];
+  const images = [{ src: 'http://localhost/assets/luckybg_main.webp' }, { src: 'http://localhost/assets/logo.png' }, { src: 'http://localhost/assets/additions/1.webp', className: 'fan-stamp' }];
   const links = [{ href: 'http://localhost/assets/additions/1.webp' }, { href: 'http://localhost/home.html' }];
   let loaded;
   runInNewContext(await Bun.file(resolve(root, 'legacy.js')).text(), {
@@ -48,8 +48,20 @@ test('legacy setup enables semantic elements and replaces unsupported artwork an
   expect(elements).toContain('main');
   expect(elements).toContain('figure');
   loaded();
-  expect(images.map(image => image.src)).toEqual(['http://localhost/assets/luckybg_main.png', 'http://localhost/assets/logo.png']);
+  expect(images.map(image => image.src)).toEqual(['http://localhost/assets/luckybg_main.png', 'http://localhost/assets/logo.png', 'http://localhost/assets/additions/1-stamp.png']);
   expect(links.map(link => link.href)).toEqual(['http://localhost/assets/additions/1.png', 'http://localhost/home.html']);
+});
+
+test('all PNG artwork uses XP-compatible bit depths and the sidebar crop stays short', async () => {
+  const files = await readdir(resolve(root, 'assets'), { recursive: true });
+  for (const path of files.filter(path => path.endsWith('.png'))) {
+    const bytes = await Bun.file(resolve(root, 'assets', path)).arrayBuffer();
+    const png = new DataView(bytes);
+    expect(png.getUint8(24)).toBeLessThanOrEqual(8);
+  }
+  const crop = new DataView(await Bun.file(resolve(root, 'assets/additions/1-stamp.png')).arrayBuffer());
+  expect(crop.getUint32(16)).toBe(300);
+  expect(crop.getUint32(20)).toBe(83);
 });
 
 test('every content document provides IE8 standards mode, UTF-8, and conditional fallbacks', async () => {

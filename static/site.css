@@ -22,22 +22,34 @@
   font-weight: 400;
   font-display: swap;
 }
+@font-face {
+  font-family: 'Moxiu Japanese';
+  src: url('assets/fonts/japanese.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Moxiu Japanese';
+  src: url('assets/fonts/japanese-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
 * { box-sizing: border-box; }
 html { background: #fff; }
-body { margin: 0; color: #333; font: 11px/1.5 Verdana, Arial, sans-serif; }
+body { margin: 0; color: #333; font: 11px/1.5 Verdana, 'Moxiu Japanese', Arial, sans-serif; }
 a { color: #0000bb; text-decoration: underline; }
 a:visited { color: #7628a2; }
 a:hover { color: #ee3685; }
 a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px dotted #000; outline-offset: 2px; }
 img { border: 0; vertical-align: middle; }
 p { margin: 6px 0 10px; }
-h1, h2, h3 { font-family: 'Comic Sans MS', cursive; }
+h1, h2, h3 { font-family: 'Comic Sans MS', 'Moxiu Japanese', cursive; }
 h1 { margin: 0; font-size: 25px; }
 h2 { margin: 12px 0 5px; font-size: 16px; color: #d83277; }
 h3 { margin: 6px 0; font-size: 13px; }
 button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .header-document, .footer-document { background: white; }
-.browser-chrome { width: 800px; max-width: 100%; height: 105px; background: #efefef; border-right: 2px ridge #eee; font: 10px Tahoma, Arial, sans-serif; }
+.browser-chrome { width: 800px; max-width: 100%; height: 105px; background: #efefef; border-right: 2px ridge #eee; font: 10px Tahoma, 'Moxiu Japanese', Arial, sans-serif; }
 .titlebar { height: 21px; display: flex; align-items: center; gap: 4px; padding: 2px 3px; color: #fff; background: linear-gradient(90deg, #ef6aa7, #f5a9c9 73%, #fad9e6); border: 1px outset #fbd4e4; white-space: nowrap; }
 .titlebar > span:not(.window-controls) { overflow: hidden; text-overflow: ellipsis; }
 .window-controls { margin-left: auto; width: 51px; height: 15px; flex: 0 0 51px; }
@@ -65,11 +77,11 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .site { width: 800px; max-width: 100%; min-height: 100vh; padding: 8px 9px 15px; border-left: 9px solid #f14c90; border-right: 9px solid #f14c90; background: #fff2be url('assets/checker.png') repeat; }
 .masthead { display: flex; align-items: center; min-height: 76px; margin: -8px -9px 9px; padding: 5px 12px; border-bottom: 1px solid #e7629b; background: linear-gradient(#ededed, #d9d9d9); }
 .masthead h1 { color: #f34791; font-size: 27px; font-weight: 700; letter-spacing: -1px; text-shadow: 2px 2px #fff; }
-.masthead p { margin: 0; color: #8b6580; font-family: 'Comic Sans MS', cursive; font-size: 12px; }
-.mini-banner { display: flex; align-items: center; gap: 5px; width: 221px; min-height: 56px; margin-left: auto; padding: 3px 5px; color: #bb115e; background: #fff075; border: 2px outset #fffad3; font: 12px/1.3 'Comic Sans MS', cursive; text-decoration: none; }
+.masthead p { margin: 0; color: #8b6580; font-family: 'Comic Sans MS', 'Moxiu Japanese', cursive; font-size: 12px; }
+.mini-banner { display: flex; align-items: center; gap: 5px; width: 221px; min-height: 56px; margin-left: auto; padding: 3px 5px; color: #bb115e; background: #fff075; border: 2px outset #fffad3; font: 12px/1.3 'Comic Sans MS', 'Moxiu Japanese', cursive; text-decoration: none; }
 .mini-banner img { width: 69px; height: 50px; object-fit: cover; border: 1px solid #eda728; }
 .mini-banner b { color: #a82872; }
-.headline { margin: 0 0 8px; padding: 3px 6px; color: #d12d74; border-top: 1px solid #fff; border-bottom: 1px solid #f487b3; background: #ffdae7; text-align: center; font: 12px 'Comic Sans MS', cursive; }
+.headline { margin: 0 0 8px; padding: 3px 6px; color: #d12d74; border-top: 1px solid #fff; border-bottom: 1px solid #f487b3; background: #ffdae7; text-align: center; font: 12px 'Comic Sans MS', 'Moxiu Japanese', cursive; }
 .home-columns { display: grid; grid-template-columns: 450px 1fr; gap: 12px; }
 .character-corner { position: relative; }
 .art-link { position: relative; display: block; height: 279px; background: #ffda63; border: 1px solid #ee84a3; overflow: hidden; }
@@ -79,11 +91,11 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .featured-character { position: absolute; top: 221px; right: -1px; width: 137px; height: auto; pointer-events: none; z-index: 2; }
 .welcome { min-height: 199px; margin: 9px 0 10px; padding: 2px; border: 2px outset #ffd2e5; background: #efefef; }
 .welcome .titlebar { height: 21px; font: 11px Tahoma, sans-serif; }
-.welcome-body { min-height: 172px; padding: 6px 134px 7px 10px; border: 1px inset #fff; background: #fffdf5; font: 12px/1.5 'Comic Sans MS', cursive; }
+.welcome-body { min-height: 172px; padding: 6px 134px 7px 10px; border: 1px inset #fff; background: #fffdf5; font: 12px/1.5 'Comic Sans MS', 'Moxiu Japanese', cursive; }
 .welcome-body h2 { margin: 1px 0 4px; font-size: 18px; color: #ee5d9a; }
 .welcome-body p { margin: 3px 0 6px; }
 .small-note { font-size: 10px; color: #777; }
-.section-bar { margin: 0; min-height: 27px; padding: 4px 8px 3px 33px; color: #fff; border: 1px solid #f296b8; border-bottom: 2px solid #ea6298; background: #f27fa9 url('assets/section.png') repeat-x; font: 700 15px/1.2 'Comic Sans MS', cursive; text-shadow: 1px 1px #e45590; }
+.section-bar { margin: 0; min-height: 27px; padding: 4px 8px 3px 33px; color: #fff; border: 1px solid #f296b8; border-bottom: 2px solid #ea6298; background: #f27fa9 url('assets/section.png') repeat-x; font: 700 15px/1.2 'Comic Sans MS', 'Moxiu Japanese', cursive; text-shadow: 1px 1px #e45590; }
 .news-window { border: 1px solid #ecc0a1; background: white; padding-bottom: 5px; }
 .news-body { padding: 6px 10px; }
 .news-body > p { margin: 1px 0 4px; text-align: center; font-size: 10px; }
@@ -94,7 +106,7 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .side-body { padding: 7px 9px; }
 .profile-snippet { display: flex; align-items: flex-start; gap: 10px; }
 .profile-snippet img { width: 77px; height: auto; border: 1px solid #e9cbca; }
-.profile-snippet p { font-family: 'Comic Sans MS', cursive; font-size: 12px; }
+.profile-snippet p { font-family: 'Comic Sans MS', 'Moxiu Japanese', cursive; font-size: 12px; }
 .mini-links { margin: 3px 0 7px; padding: 0 0 0 16px; }
 .mini-links li { margin: 2px 0; }
 .home-links { padding: 7px 10px; border: 1px solid #ddadc1; background: #fff; }
@@ -103,30 +115,30 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .home-links a, .home-links a:visited, .mini-links a, .mini-links a:visited { color: #7628a2; }
 .home-links a:hover, .mini-links a:hover { color: #ee3685; }
 .fan-stamp { margin-top: 10px; display: block; width: 100%; height: 83px; object-fit: cover; object-position: center 45%; border: 2px ridge #ffd298; }
-.bottom-links { margin-top: 12px; padding-top: 5px; border-top: 1px dotted #e16e95; text-align: center; font: 11px/1.7 'Comic Sans MS', cursive; }
+.bottom-links { margin-top: 12px; padding-top: 5px; border-top: 1px dotted #e16e95; text-align: center; font: 11px/1.7 'Comic Sans MS', 'Moxiu Japanese', cursive; }
 .bottom-links a { margin: 0 5px; white-space: nowrap; }
 .page-heading { position: relative; min-height: 102px; margin: -8px -9px 10px; padding: 15px 70px 12px 18px; border-bottom: 3px double #dc6e97; background: #ffdae5; }
 .page-heading h1 { color: #d94382; font-size: 25px; }
-.page-heading p { margin: 3px 0; font: 12px 'Comic Sans MS', cursive; color: #a86a86; }
+.page-heading p { margin: 3px 0; font: 12px 'Comic Sans MS', 'Moxiu Japanese', cursive; color: #a86a86; }
 .page-heading img { position: absolute; top: 7px; right: 18px; width: 20px; height: 87px; }
 .breadcrumb { margin-bottom: 10px; font-size: 10px; }
 .page-columns { display: grid; grid-template-columns: 1fr 181px; gap: 16px; align-items: start; }
 .document-paper { background: #fff; padding: 10px 13px 14px; border: 1px solid #c7b5bc; }
-.personal-copy { font: 13px/1.6 'Comic Sans MS', cursive; }
+.personal-copy { font: 13px/1.6 'Comic Sans MS', 'Moxiu Japanese', cursive; }
 .personal-copy h2 { margin-top: 0; font-size: 20px; }
 .information { width: 100%; border-collapse: collapse; margin: 5px 0 14px; }
-.information caption { text-align: left; margin: 8px 0 4px; font: 700 16px 'Comic Sans MS', cursive; color: #d13c7d; }
+.information caption { text-align: left; margin: 8px 0 4px; font: 700 16px 'Comic Sans MS', 'Moxiu Japanese', cursive; color: #d13c7d; }
 .information th, .information td { padding: 6px 7px; border: 1px solid #dfc1ce; text-align: left; vertical-align: top; }
-.information th { width: 102px; color: #9e3a66; background: #ffe5f0; font: 400 12px 'Comic Sans MS', cursive; }
-.information td { background: #fffdfa; font: 12px/1.5 'Comic Sans MS', cursive; }
+.information th { width: 102px; color: #9e3a66; background: #ffe5f0; font: 400 12px 'Comic Sans MS', 'Moxiu Japanese', cursive; }
+.information td { background: #fffdfa; font: 12px/1.5 'Comic Sans MS', 'Moxiu Japanese', cursive; }
 .swatch { display: inline-block; width: 10px; height: 10px; background: #fad6ff; border: 1px solid #a888b0; }
-.hardware-list { margin-top: 20px; padding-top: 8px; border-top: 1px dotted #e16e95; font: 12px/1.6 'Comic Sans MS', cursive; }
+.hardware-list { margin-top: 20px; padding-top: 8px; border-top: 1px dotted #e16e95; font: 12px/1.6 'Comic Sans MS', 'Moxiu Japanese', cursive; }
 .hardware-list ul { margin: 4px 0 12px; padding-left: 20px; }
 .hardware-list li { margin: 3px 0; overflow-wrap: anywhere; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .file-browser h2 { overflow-wrap: anywhere; }
 .file-search { margin: 14px 0 10px; }
-.file-search label { display: block; margin-bottom: 4px; color: #9e3a66; font: 700 13px 'Comic Sans MS', cursive; }
+.file-search label { display: block; margin-bottom: 4px; color: #9e3a66; font: 700 13px 'Comic Sans MS', 'Moxiu Japanese', cursive; }
 .file-search-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .file-search input { flex: 1 1 160px; min-width: 0; padding: 5px; border: 2px inset #eee; font: 12px Tahoma, sans-serif; }
 .file-search button { padding: 4px 9px; border: 2px outset #ffd7e8; background: #ffd6e6; }
@@ -138,12 +150,12 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .file-list td:first-child { overflow-wrap: anywhere; }
 .file-download-link, .file-download-link:visited, .file-view-link, .file-view-link:visited, #text-download, #text-download:visited { color: #b12f66; }
 .file-download-link:hover, .file-view-link:hover, #text-download:hover { color: #ce286d; }
-.file-view-link { margin-left: 8px; white-space: nowrap; font: 11px Verdana, Arial, sans-serif; }
+.file-view-link { margin-left: 8px; white-space: nowrap; font: 11px Verdana, 'Moxiu Japanese', Arial, sans-serif; }
 .text-file-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .text-file-content { margin: 12px 0 0; padding: 12px; border: 1px dotted #ed789a; background: #fff9e9; font: 12px/1.6 'Courier New', monospace; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
 .text-file-content:focus-visible { outline: 2px dotted #000; outline-offset: 2px; }
 .owner-upload { margin-top: 18px; padding: 8px 10px; border: 1px dotted #ed789a; background: #fff9e9; }
-.owner-upload summary { color: #9e3a66; cursor: pointer; font: 700 14px 'Comic Sans MS', cursive; }
+.owner-upload summary { color: #9e3a66; cursor: pointer; font: 700 14px 'Comic Sans MS', 'Moxiu Japanese', cursive; }
 .owner-upload label { display: block; margin: 7px 0 3px; }
 .owner-upload input { max-width: 100%; font: 12px Tahoma, sans-serif; }
 .owner-upload input[type="password"], .owner-upload input[type="text"] { width: 100%; padding: 5px; border: 2px inset #eee; }
@@ -156,7 +168,7 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .sidebar h2 { text-align: center; margin: 0 0 6px; font-size: 14px; border-bottom: 1px dotted #d3899e; }
 .sidebar img { display: block; width: 100%; height: auto; }
 .sidebar .side-cutout { width: 112px; margin: 3px auto; }
-.sidebar p { font: 11px/1.5 'Comic Sans MS', cursive; text-align: center; }
+.sidebar p { font: 11px/1.5 'Comic Sans MS', 'Moxiu Japanese', cursive; text-align: center; }
 .sidebar > a { display: block; text-align: center; margin: 5px 0; }
 .directory { margin: 0 0 12px; padding: 1px 8px 5px; border-left: 7px solid #b60f4d; }
 .directory h2 { font-size: 16px; margin: 5px 0; padding-bottom: 2px; border-bottom: 1px solid #ccc; }
@@ -167,8 +179,8 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .link-button code { overflow-wrap: anywhere; display: block; margin-top: 5px; font: 10px/1.5 monospace; }
 .address-book { margin: 4px 0; padding: 0; list-style: none; }
 .address-book li { padding: 8px 5px 8px 8px; border-bottom: 1px dotted #cea4bc; }
-.address-book b { display: inline-block; min-width: 82px; color: #bc3e7c; font: 700 13px 'Comic Sans MS', cursive; }
-.address-book a, .address-book span { font: 13px 'Comic Sans MS', cursive; overflow-wrap: anywhere; }
+.address-book b { display: inline-block; min-width: 82px; color: #bc3e7c; font: 700 13px 'Comic Sans MS', 'Moxiu Japanese', cursive; }
+.address-book a, .address-book span { font: 13px 'Comic Sans MS', 'Moxiu Japanese', cursive; overflow-wrap: anywhere; }
 .address-book .email { display: block; margin-top: 3px; }
 .coin { margin: 10px 0; padding: 6px 9px; background: #fffbed; border: 1px solid #ddc4cc; }
 .coin h2 { font-size: 14px; margin: 0 0 4px; border-bottom: 1px dotted #e5b6cc; }
@@ -176,14 +188,15 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; }
 .gallery figure { margin: 0; padding: 5px; border: 1px solid #e3bca9; background: #fff; text-align: center; }
 .gallery figure img { width: 100%; height: 188px; object-fit: contain; }
-.gallery figcaption { margin-top: 5px; color: #a2487d; font: 11px 'Comic Sans MS', cursive; }
-.gallery-note { margin: 0 0 10px; font: 12px 'Comic Sans MS', cursive; }
+.gallery figcaption { margin-top: 5px; color: #a2487d; font: 11px 'Comic Sans MS', 'Moxiu Japanese', cursive; }
+.gallery-note { margin: 0 0 10px; font: 12px 'Comic Sans MS', 'Moxiu Japanese', cursive; }
 .gallery-wallpaper { display: block; width: 100%; height: auto; margin: 14px 0 0; border: 1px solid #ee9aa8; }
-.footer-strip { width: 800px; max-width: 100%; border-top: 1px solid #ccc; font: 9px/1.25 Tahoma, Arial, sans-serif; }
+.footer-strip { width: 800px; max-width: 100%; border-top: 1px solid #ccc; font: 9px/1.25 Tahoma, 'Moxiu Japanese', Arial, sans-serif; }
 .button-strip { min-height: 36px; display: flex; justify-content: space-around; align-items: center; gap: 5px; padding: 2px 9px; }
 .button-strip > img, .button-strip a, .button-strip a img { width: 88px; height: 31px; flex: 0 0 88px; }
 .footer-status { margin: 0; min-height: 21px; padding: 4px 3px 2px; text-align: center; color: #777; border: 2px inset #eee; background: repeating-linear-gradient(#fafafa 0 1px, #ededed 1px 3px); }
 .footer-status a { color: #84627d; }
+[lang="ja"], .page-heading [lang="ja"] { font-family: 'Moxiu Japanese', 'MS PGothic', 'MS Gothic', sans-serif; }
 @media (max-width: 799px) {
   .home-columns { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
   .masthead h1 { font-size: 23px; }
