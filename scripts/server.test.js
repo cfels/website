@@ -2,14 +2,17 @@ import { afterAll, beforeAll, expect, test } from 'bun:test';
 import { resolve } from 'node:path';
 import { once } from 'node:events';
 import { spawn } from 'node:child_process';
+import { createConnection } from 'node:net';
 import { runInNewContext } from 'node:vm';
 
 let server;
 let origin;
 
 beforeAll(async () => {
+  const environment = { ...process.env, HOST: '127.0.0.1', PORT: '0', FILES_UPLOAD_TOKEN: '' };
+  delete environment.FILES_MAX_UPLOAD_MB;
   server = spawn(process.execPath, [resolve(import.meta.dir, '../server.js')], {
-    env: { ...process.env, HOST: '127.0.0.1', PORT: '0' },
+    env: environment,
     stdio: ['ignore', 'pipe', 'pipe']
   });
   origin = await new Promise((resolveOrigin, reject) => {
@@ -33,7 +36,7 @@ afterAll(async () => {
 });
 
 test('production serves actual frames and every separate content document', async () => {
-  const paths = ['/', '/header.html', '/footer.html', '/home.html', '/profile.html', '/contact.html', '/links.html', '/gallery.html', '/donate/index.html'];
+  const paths = ['/', '/header.html', '/footer.html', '/home.html', '/profile.html', '/contact.html', '/links.html', '/gallery.html', '/donate/index.html', '/files/'];
   for (const path of paths) {
     const response = await fetch(origin + path);
     expect(response.status).toBe(200);
@@ -41,6 +44,45 @@ test('production serves actual frames and every separate content document', asyn
     const html = await response.text();
     expect(html).toContain(path === '/' ? '<frameset ' : '<body');
   }
+});
+
+test('the file host is linked from navigation and uploads are disabled without a token', async () => {
+  const header = await (await fetch(origin + '/header.html')).text();
+  expect(header).toContain('href="/files/" target="main"');
+  const files = await fetch(origin + '/files', { redirect: 'manual' });
+  expect(files.status).toBe(308);
+  expect(files.headers.get('location')).toBe('/files/');
+  expect((await fetch(origin + '/files.html', { redirect: 'manual' })).status).toBe(308);
+  expect((await fetch(origin + '/api/files/upload', { method: 'POST' })).status).toBe(503);
+  expect((await fetch(origin + '/api/files/mkdir', { method: 'POST' })).status).toBe(503);
+  const profile = await (await fetch(origin + '/profile.html')).text();
+  for (const hardware of ['Ryzen 5 7600', 'Radeon 6800XT', '32GB DDR5', 'Lexar SSD NM790 1TB', 'Lexar SSD NM620 1TB', 'Samsung NP300E5C-A04PL', 'ThinkPad T470', 'vivo X90 Pro Plus', 'OnePlus 7 Pro', 'Huawei P60 Pro', 'Samsung A53', 'Huion H950P', 'Broken Xbox 360', '500GB Seagate', '320GB WD', '80GB WD', '1× ESP32-S3', '2× NodeMCU v3 ESP32']) expect(profile).toContain(hardware);
+});
+
+test('production accepts declared 10 GiB requests and rejects one byte over the limit', async () => {
+  function declaredUpload(size) {
+    return new Promise((resolveStatus, reject) => {
+      const url = new URL(origin);
+      const socket = createConnection({ host: '127.0.0.1', port: Number(url.port) });
+      socket.setTimeout(3000, () => {
+        socket.destroy();
+        reject(new Error('Upload header response timed out'));
+      });
+      socket.on('error', reject);
+      socket.on('connect', () => socket.write(`POST /api/files/upload HTTP/1.1\r\nHost: ${url.host}\r\nContent-Length: ${size}\r\nConnection: close\r\n\r\n`));
+      let output = '';
+      socket.on('data', chunk => {
+        output += chunk;
+        const match = output.match(/^HTTP\/1\.1 (\d+)/);
+        if (match) {
+          socket.destroy();
+          resolveStatus(Number(match[1]));
+        }
+      });
+    });
+  }
+  expect(await declaredUpload(10737418240)).toBe(503);
+  expect(await declaredUpload(10737418241)).toBe(413);
 });
 
 test('old donation URL redirects to its standalone document', async () => {

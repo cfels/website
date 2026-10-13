@@ -1,0 +1,22 @@
+vacpro.fyi {
+	request_body /api/files/upload {
+		max_size 10GiB
+	}
+	reverse_proxy 127.0.0.1:3000
+}
+
+http://vacpro.fyi {
+	@ownerAPI path /api/files/*
+	handle @ownerAPI {
+		respond "Owner actions require HTTPS" 403
+	}
+
+	@xp header_regexp legacy User-Agent "Windows NT 5[.][12]"
+	handle @xp {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	handle {
+		redir https://vacpro.fyi{uri} 302
+	}
+}

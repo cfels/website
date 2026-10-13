@@ -28,7 +28,7 @@ body { margin: 0; color: #333; font: 11px/1.5 Verdana, Arial, sans-serif; }
 a { color: #0000bb; text-decoration: underline; }
 a:visited { color: #7628a2; }
 a:hover { color: #ee3685; }
-a:focus-visible, button:focus-visible { outline: 2px dotted #000; outline-offset: 2px; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px dotted #000; outline-offset: 2px; }
 img { border: 0; vertical-align: middle; }
 p { margin: 6px 0 10px; }
 h1, h2, h3 { font-family: 'Comic Sans MS', cursive; }
@@ -100,6 +100,8 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .home-links { padding: 7px 10px; border: 1px solid #ddadc1; background: #fff; }
 .home-links h2 { margin: 0 0 4px; font-size: 14px; }
 .home-links p { margin: 3px 0; }
+.home-links a, .home-links a:visited { color: #7628a2; }
+.home-links a:hover { color: #ee3685; }
 .fan-stamp { margin-top: 10px; display: block; width: 100%; height: 83px; object-fit: cover; object-position: center 45%; border: 2px ridge #ffd298; }
 .bottom-links { margin-top: 12px; padding-top: 5px; border-top: 1px dotted #e16e95; text-align: center; font: 11px/1.7 'Comic Sans MS', cursive; }
 .bottom-links a { margin: 0 5px; white-space: nowrap; }
@@ -118,6 +120,32 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .information th { width: 102px; color: #9e3a66; background: #ffe5f0; font: 400 12px 'Comic Sans MS', cursive; }
 .information td { background: #fffdfa; font: 12px/1.5 'Comic Sans MS', cursive; }
 .swatch { display: inline-block; width: 10px; height: 10px; background: #fad6ff; border: 1px solid #a888b0; }
+.hardware-list { margin-top: 20px; padding-top: 8px; border-top: 1px dotted #e16e95; font: 12px/1.6 'Comic Sans MS', cursive; }
+.hardware-list ul { margin: 4px 0 12px; padding-left: 20px; }
+.hardware-list li { margin: 3px 0; overflow-wrap: anywhere; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.file-browser h2 { overflow-wrap: anywhere; }
+.file-search { margin: 14px 0 10px; }
+.file-search label { display: block; margin-bottom: 4px; color: #9e3a66; font: 700 13px 'Comic Sans MS', cursive; }
+.file-search-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.file-search input { flex: 1 1 160px; min-width: 0; padding: 5px; border: 2px inset #eee; font: 12px Tahoma, sans-serif; }
+.file-search button { padding: 4px 9px; border: 2px outset #ffd7e8; background: #ffd6e6; }
+.file-search-results { font-size: 11px; }
+.file-list { table-layout: fixed; }
+.file-list th:first-child { width: auto; }
+.file-list th:nth-child(2) { width: 80px; }
+.file-list th:nth-child(3) { width: 116px; }
+.file-list td:first-child { overflow-wrap: anywhere; }
+.owner-upload { margin-top: 18px; padding: 8px 10px; border: 1px dotted #ed789a; background: #fff9e9; }
+.owner-upload summary { color: #9e3a66; cursor: pointer; font: 700 14px 'Comic Sans MS', cursive; }
+.owner-upload label { display: block; margin: 7px 0 3px; }
+.owner-upload input { max-width: 100%; font: 12px Tahoma, sans-serif; }
+.owner-upload input[type="password"], .owner-upload input[type="text"] { width: 100%; padding: 5px; border: 2px inset #eee; }
+.owner-upload form + form { margin-top: 14px; padding-top: 4px; border-top: 1px dotted #e16e95; }
+.owner-upload progress:not([hidden]) { display: block; width: 100%; margin-top: 8px; accent-color: #d83277; }
+.owner-upload button { padding: 4px 9px; border: 2px outset #ffd7e8; background: #ffd6e6; }
+.owner-upload button:disabled { cursor: wait; opacity: .6; }
+#owner-status { overflow-wrap: anywhere; }
 .sidebar { background: #fff5d9; border: 1px solid #ebb7a0; padding: 6px; }
 .sidebar h2 { text-align: center; margin: 0 0 6px; font-size: 14px; border-bottom: 1px dotted #d3899e; }
 .sidebar img { display: block; width: 100%; height: auto; }

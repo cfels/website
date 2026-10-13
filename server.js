@@ -1,24 +1,43 @@
 import { resolve, sep } from 'node:path';
+import { createFileHost, defaultMaxUploadBytes } from './file-host.js';
 
 const root = resolve(import.meta.dir, process.argv.includes('--dev') ? 'static' : 'build');
 if (!(await Bun.file(resolve(root, 'index.html')).exists())) {
   throw new Error('Run bun run build before starting the production server.');
 }
+const maxUploadBytes = process.env.FILES_MAX_UPLOAD_MB === undefined ? defaultMaxUploadBytes : Number(process.env.FILES_MAX_UPLOAD_MB) * 1024 * 1024;
+const fileHost = await createFileHost(resolve(import.meta.dir, 'files'), await Bun.file(resolve(root, 'files.html')).text(), {
+  uploadToken: process.env.FILES_UPLOAD_TOKEN || '',
+  maxUploadBytes
+});
 
 const server = Bun.serve({
   port: process.env.PORT || 3000,
   hostname: process.env.HOST || '0.0.0.0',
-  async fetch(request) {
+  maxRequestBodySize: maxUploadBytes,
+  async fetch(request, server) {
+    const url = new URL(request.url);
+    if (url.pathname === '/api/files/upload') {
+      server.timeout(request, 255);
+      return fileHost.upload(request);
+    }
+    if (url.pathname === '/api/files/mkdir') return fileHost.createFolder(request);
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
     }
 
-    const url = new URL(request.url);
     let pathname;
     try {
       pathname = decodeURIComponent(url.pathname);
     } catch {
       return new Response('Bad request', { status: 400 });
+    }
+    if (pathname === '/files') {
+      return new Response(null, { status: 308, headers: { Location: '/files/' } });
+    }
+    if (pathname.startsWith('/files/')) return fileHost.download(request, pathname);
+    if (pathname === '/files.html') {
+      return new Response(null, { status: 308, headers: { Location: '/files/' } });
     }
     if (pathname === '/donate') {
       return new Response(null, { status: 308, headers: { Location: '/donate/' } });

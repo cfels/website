@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Moxiu / files</title>
+  <link rel="icon" href="/assets/favicon.png" type="image/png">
+  <link rel="stylesheet" href="/site.css">
+  <script src="/files.js" defer></script>
+</head>
+<body>
+  <main class="site">
+    <header class="page-heading"><h1>My file stash ☆</h1><p>Downloads &amp; random stuff</p><img src="/assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
+    <p class="breadcrumb"><a href="/home.html">Home</a> &gt; Files</p>
+    <article class="document-paper file-browser">
+      <h2 id="folder-path">C:\files\</h2>
+      <p class="personal-copy">Stuff I've put here for you to download. Help yourself :p</p>
+      <form id="file-search" class="file-search" method="get" action="/files/" role="search">
+        <label for="file-query">Search for file/folder</label>
+        <div class="file-search-controls">
+          <input id="file-query" type="search" name="q" maxlength="255" placeholder="File or folder name" autocomplete="off">
+          <button type="submit">Search</button>
+          <a id="search-clear" href="/files/">Show all</a>
+        </div>
+      </form>
+      <p id="file-search-results" class="file-search-results" role="status" hidden></p>
+      <table class="information file-list">
+        <caption class="visually-hidden">Files available to download</caption>
+        <thead><tr><th scope="col">Name</th><th scope="col">Size</th><th scope="col">Updated (UTC)</th></tr></thead>
+        <tbody id="file-entries"><tr><td colspan="3">Visit <a href="/files/">the file stash</a> to browse downloads.</td></tr></tbody>
+      </table>
+      <details id="owner-tools" class="owner-upload" data-folder="">
+        <summary>Webmaster tools</summary>
+        <p><label for="owner-token">upload token</label><input id="owner-token" type="password" required minlength="32" autocomplete="off" spellcheck="false"></p>
+        <form id="folder-form">
+          <p><label for="folder-name">New folder name</label><input id="folder-name" type="text" required maxlength="255" autocomplete="off"></p>
+          <button type="submit">Create folder</button>
+        </form>
+        <form id="upload-form">
+          <p><label for="upload-file">File</label><input id="upload-file" type="file" required></p>
+          <p class="small-note">Up to <span id="upload-limit">10 GiB</span> per file, in this folder.</p>
+          <button type="submit">Upload file</button>
+          <button id="upload-cancel" type="button" hidden>Cancel upload</button>
+          <progress id="upload-progress" max="100" value="0" aria-label="Upload progress" hidden></progress>
+        </form>
+        <p id="owner-status" role="status" aria-live="polite"></p>
+        <p id="owner-refresh" hidden><a href="/files/">Refresh the file list »</a></p>
+      </details>
+    </article>
+    <nav class="bottom-links" aria-label="Document navigation"><a href="/home.html">Home</a> · <a href="/profile.html">About me</a> · <a href="/contact.html">Contact</a> · <a href="/links.html">Links</a> · <a href="/donate/index.html">Support</a> · <a href="/gallery.html">Gallery</a></nav>
+  </main>
+</body>
+</html>
