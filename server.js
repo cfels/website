@@ -1,7 +1,12 @@
 import { resolve, sep } from 'node:path';
 import { createFileHost, defaultMaxUploadBytes } from './file-host.js';
 
-const root = resolve(import.meta.dir, process.argv.includes('--dev') ? 'static' : 'build');
+const development = process.argv.includes('--dev');
+const downloadPort = process.env.FILES_DOWNLOAD_PORT === undefined ? undefined : Number(process.env.FILES_DOWNLOAD_PORT);
+if (downloadPort !== undefined && (!/^\d+$/.test(process.env.FILES_DOWNLOAD_PORT) || !Number.isInteger(downloadPort) || downloadPort < 0 || downloadPort > 65535)) {
+  throw new Error('FILES_DOWNLOAD_PORT must be an integer between 0 and 65535.');
+}
+const root = resolve(import.meta.dir, development ? 'static' : 'build');
 if (!(await Bun.file(resolve(root, 'index.html')).exists())) {
   throw new Error('Run bun run build before starting the production server.');
 }
@@ -12,6 +17,7 @@ const fileHost = await createFileHost(resolve(import.meta.dir, 'files'), await B
 });
 
 const server = Bun.serve({
+  development,
   port: process.env.PORT || 3000,
   hostname: process.env.HOST || '0.0.0.0',
   maxRequestBodySize: maxUploadBytes,
@@ -66,5 +72,28 @@ const server = Bun.serve({
     return new Response(request.method === 'HEAD' ? null : body, { status: exists ? 200 : 404, headers });
   }
 });
+
+if (downloadPort !== undefined) {
+  const downloads = Bun.serve({
+    development,
+    port: downloadPort,
+    hostname: process.env.HOST || '0.0.0.0',
+    maxRequestBodySize: 0,
+    fetch(request) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
+      }
+      let pathname;
+      try {
+        pathname = decodeURIComponent(new URL(request.url).pathname);
+      } catch {
+        return new Response('Bad request', { status: 400 });
+      }
+      if (!pathname.startsWith('/files/')) return new Response('Not found', { status: 404 });
+      return fileHost.download(request, pathname, { attachmentOnly: true });
+    }
+  });
+  console.log(`Downloads: http://localhost:${downloads.port}`);
+}
 
 console.log(`Local: http://localhost:${server.port}`);

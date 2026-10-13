@@ -40,14 +40,14 @@ for (const target of frameTargets) {
 const index = await Bun.file(resolve(root, 'index.html')).text();
 if (!index.includes('<frameset ') || !index.includes('HTML 4.01 Frameset')) errors.push('Missing legacy frameset');
 
-for (const script of ['../server.js', '../file-host.js', 'files.js', 'frames.js', 'header.js', 'service-worker.js', '../scripts/build.js', '../scripts/check.js']) {
+for (const script of ['../server.js', '../file-host.js', 'files.js', 'frames.js', 'header.js', 'legacy.js', 'service-worker.js', '../scripts/build.js', '../scripts/check.js']) {
   try {
     new Bun.Transpiler({ loader: 'js' }).scan(await Bun.file(resolve(root, script)).text());
   } catch (error) {
     errors.push(`${script}: ${error.message}`);
   }
 }
-const css = await Bun.build({ entrypoints: [resolve(root, 'site.css')], external: ['*.woff2', '*.png', '*.webp'], write: false });
+const css = await Bun.build({ entrypoints: [resolve(root, 'site.css'), resolve(root, 'legacy.css')], external: ['*.woff2', '*.eot', '*.png', '*.webp'], write: false });
 if (!css.success) errors.push(...css.logs.map(String));
 
 if (errors.length) {

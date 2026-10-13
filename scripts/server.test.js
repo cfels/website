@@ -4,12 +4,15 @@ import { once } from 'node:events';
 import { spawn } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { runInNewContext } from 'node:vm';
+import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 
 let server;
 let origin;
+let downloadOrigin;
 
 beforeAll(async () => {
-  const environment = { ...process.env, HOST: '127.0.0.1', PORT: '0', FILES_UPLOAD_TOKEN: '' };
+  const environment = { ...process.env, HOST: '127.0.0.1', PORT: '0', FILES_DOWNLOAD_PORT: '0', FILES_UPLOAD_TOKEN: '' };
   delete environment.FILES_MAX_UPLOAD_MB;
   server = spawn(process.execPath, [resolve(import.meta.dir, '../server.js')], {
     env: environment,
@@ -20,11 +23,26 @@ beforeAll(async () => {
     server.stdout.on('data', chunk => {
       output += chunk;
       const match = output.match(/Local: (http:\/\/localhost:\d+)/);
-      if (match) resolveOrigin(match[1]);
+      const downloads = output.match(/Downloads: (http:\/\/localhost:\d+)/);
+      if (match && downloads) {
+        downloadOrigin = downloads[1];
+        resolveOrigin(match[1]);
+      }
     });
     server.on('error', reject);
     server.on('exit', code => reject(new Error(`Server exited before listening: ${code}`)));
   });
+});
+
+test('download listener does not serve website pages, previews, or owner actions', async () => {
+  for (const path of ['/', '/home.html', '/files/', '/files/example.txt?view=1', '/api/files/upload']) {
+    expect((await fetch(downloadOrigin + path)).status).toBe(404);
+  }
+  for (const path of ['/api/files/upload', '/api/files/mkdir', '/files/example.txt']) {
+    expect((await fetch(downloadOrigin + path, { method: 'POST' })).status).toBe(405);
+  }
+  expect((await fetch(downloadOrigin + '/%zz')).status).toBe(400);
+  expect((await fetch(downloadOrigin + '/files/%00')).status).toBe(403);
 });
 
 afterAll(async () => {
@@ -102,6 +120,11 @@ test('assets have correct types, caching, and conditional responses', async () =
   expect((await cached.arrayBuffer()).byteLength).toBe(0);
   const font = await fetch(origin + '/assets/fonts/comic.woff2');
   expect(font.headers.get('content-type')).toContain('font/woff2');
+  const legacyFont = await fetch(origin + '/assets/fonts/comic.eot');
+  expect(legacyFont.status).toBe(200);
+  expect(legacyFont.headers.get('content-type')).toBe('application/vnd.ms-fontobject');
+  expect(legacyFont.headers.get('x-content-type-options')).toBe('nosniff');
+  expect((await legacyFont.arrayBuffer()).byteLength).toBeGreaterThan(82);
 });
 
 test('HEAD returns no body and documents revalidate', async () => {
@@ -129,6 +152,45 @@ test('unsupported mutations are rejected and security headers allow same-origin 
   const page = await fetch(origin + '/');
   expect(page.headers.get('x-content-type-options')).toBe('nosniff');
   expect(page.headers.get('content-security-policy')).toContain("frame-src 'self'");
+});
+
+test('production errors do not expose source code even when NODE_ENV enables development', async () => {
+  const fixture = await mkdtemp(resolve(tmpdir(), 'website-production-error-'));
+  let fixtureServer;
+  try {
+    await mkdir(resolve(fixture, 'files'));
+    await mkdir(resolve(fixture, 'build'));
+    for (const file of ['server.js', 'file-host.js', 'build/index.html', 'build/files.html']) {
+      await copyFile(resolve(import.meta.dir, '..', file), resolve(fixture, file));
+    }
+    const environment = { ...process.env, NODE_ENV: 'development', HOST: '127.0.0.1', PORT: '0', FILES_UPLOAD_TOKEN: '' };
+    delete environment.FILES_MAX_UPLOAD_MB;
+    fixtureServer = spawn(process.execPath, [resolve(fixture, 'server.js')], { env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
+    const fixtureOrigin = await new Promise((resolveOrigin, reject) => {
+      let output = '';
+      fixtureServer.stdout.on('data', chunk => {
+        output += chunk;
+        const match = output.match(/Local: (http:\/\/localhost:\d+)/);
+        if (match) resolveOrigin(match[1]);
+      });
+      fixtureServer.on('error', reject);
+      fixtureServer.on('exit', code => reject(new Error(`Server exited before listening: ${code}`)));
+    });
+    const response = await fetch(fixtureOrigin + '/missing-page');
+    expect(response.status).toBe(500);
+    const body = await response.text();
+    expect(body).not.toContain(fixture);
+    expect(body).not.toContain('server.js');
+    expect(body).not.toContain('FILES_UPLOAD_TOKEN');
+    expect(body).not.toContain('const headers');
+  } finally {
+    if (fixtureServer && fixtureServer.exitCode === null) {
+      const stopped = once(fixtureServer, 'exit');
+      fixtureServer.kill();
+      await stopped;
+    }
+    await rm(fixture, { recursive: true, force: true });
+  }
 });
 
 test('returning visitors leave the old worker without deleting unrelated caches', async () => {

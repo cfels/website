@@ -1,11 +1,14 @@
 import { constants } from 'node:fs';
-import { link, mkdir, open, readdir, readFile, unlink } from 'node:fs/promises';
+import { link, mkdir, open, opendir, readdir, readFile, unlink } from 'node:fs/promises';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
 
 const readFlags = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 const directoryFlags = readFlags | constants.O_DIRECTORY;
 export const defaultMaxUploadBytes = 10 * 1024 * 1024 * 1024;
+const maxTextViewBytes = 10 * 1024 * 1024;
+const maxFolderSizeEntries = 10000;
+const maxFolderSizeDepth = 64;
 const hiddenErrors = new Set(['ENOENT', 'ENOTDIR', 'ELOOP', 'EACCES', 'EPERM']);
 const pageHeaders = {
   'Content-Type': 'text/html; charset=utf-8',
@@ -25,6 +28,10 @@ function encodeName(name) {
 
 function fileURL(parts, directory = false) {
   return `/files/${parts.map(encodeName).join('/')}${directory && parts.length ? '/' : ''}`;
+}
+
+function isTextFile(name) {
+  return /\.(txt|md|json|log|csv|tsv|yaml|yml|toml|ini|cfg|conf|fgconfig)$/i.test(name) || /^readme$/i.test(name);
 }
 
 function escapeHTML(value) {
@@ -107,17 +114,51 @@ export async function createFileHost(rootPath, template, { uploadToken = '', max
     }
   }
 
+  async function folderSize(directory, budget, depth = 0) {
+    if (depth >= maxFolderSizeDepth) return null;
+    let size = 0;
+    try {
+      for await (const { name } of await opendir(`/proc/self/fd/${directory.fd}`)) {
+        if (budget.remaining-- <= 0) return null;
+        if (!validName(name)) continue;
+        let entry;
+        try {
+          entry = await openEntry(directory, name);
+          if (!entry) continue;
+          const bytes = entry.stat.isDirectory() ? await folderSize(entry.handle, budget, depth + 1) : entry.stat.size;
+          if (bytes === null) return null;
+          size += bytes;
+          if (!Number.isSafeInteger(size)) return null;
+        } catch (error) {
+          if (!hiddenErrors.has(error.code)) throw error;
+        } finally {
+          if (entry) await entry.handle.close();
+        }
+      }
+      return size;
+    } catch (error) {
+      if (hiddenErrors.has(error.code)) return null;
+      throw error;
+    }
+  }
+
   async function directoryPage(request, handle, parts) {
     const query = (new URL(request.url).searchParams.get('q') || '').trim();
     if (query.length > 255) return failure('Search is limited to 255 characters', 400);
+    if (request.method === 'HEAD') return new Response(null, { headers: pageHeaders });
     const search = query.toLowerCase();
     const entries = [];
+    const sizeBudget = { remaining: maxFolderSizeEntries };
     for (const name of await readdir(`/proc/self/fd/${handle.fd}`)) {
       if (!validName(name) || (search && !name.toLowerCase().includes(search))) continue;
       let entry;
       try {
         entry = await openEntry(handle, name);
-        if (entry) entries.push({ name, directory: entry.stat.isDirectory(), size: entry.stat.size, modified: entry.stat.mtime.toISOString() });
+        if (entry) {
+          const directory = entry.stat.isDirectory();
+          const size = directory ? await folderSize(entry.handle, sizeBudget) : entry.stat.size;
+          entries.push({ name, directory, size, modified: entry.stat.mtime.toISOString() });
+        }
       } catch (error) {
         if (!hiddenErrors.has(error.code)) throw error;
       } finally {
@@ -126,7 +167,12 @@ export async function createFileHost(rootPath, template, { uploadToken = '', max
     }
     entries.sort((a, b) => Number(b.directory) - Number(a.directory) || a.name.localeCompare(b.name, 'en'));
     let rows = parts.length ? `<tr><td><a href="${fileURL(parts.slice(0, -1), true)}">..\\ (parent folder)</a></td><td>Folder</td><td>—</td></tr>` : '';
-    rows += entries.map(entry => `<tr><td><a href="${fileURL([...parts, entry.name], entry.directory)}">${escapeHTML(entry.name)}${entry.directory ? '\\' : ''}</a></td><td>${entry.directory ? 'Folder' : formatSize(entry.size)}</td><td><time datetime="${entry.modified}">${entry.modified.slice(0, 10)}</time></td></tr>`).join('');
+    rows += entries.map(entry => {
+      const url = fileURL([...parts, entry.name], entry.directory);
+      const view = !entry.directory && isTextFile(entry.name) ? ` <a class="file-view-link" href="${url}?view=1" aria-label="View ${escapeHTML(entry.name)}">View</a>` : '';
+      const size = entry.size === null ? '—' : formatSize(entry.size);
+      return `<tr><td><a${entry.directory ? '' : ' class="file-download-link"'} href="${url}">${escapeHTML(entry.name)}${entry.directory ? '\\' : ''}</a>${view}</td><td${entry.directory ? ' title="Total size of downloadable files in this folder and its subfolders"' : ''}>${size}</td><td><time datetime="${entry.modified}">${entry.modified.slice(0, 10)}</time></td></tr>`;
+    }).join('');
     if (!entries.length) rows += `<tr><td colspan="3">${query ? 'No matching files or folders.' : 'No files here yet :p'}</td></tr>`;
 
     const response = new HTMLRewriter()
@@ -141,6 +187,10 @@ export async function createFileHost(rootPath, template, { uploadToken = '', max
         }
       } })
       .on('#file-entries', { element: element => element.setInnerContent(rows, { html: true }) })
+      .on('#folder-size-note', { element: element => {
+        if (entries.some(entry => entry.size === null)) element.setInnerContent('Folder sizes include downloadable files in subfolders. A dash means its size is unavailable; open the folder to browse its contents.');
+      } })
+      .on('#text-viewer', { element: element => element.remove() })
       .on('#owner-tools', { element: element => {
         if (!tokenHash || request.headers.get('x-forwarded-proto') === 'http') element.remove();
         else element.setAttribute('data-folder', encodeName(parts.join('/')));
@@ -149,12 +199,70 @@ export async function createFileHost(rootPath, template, { uploadToken = '', max
       .on('#upload-file', { element: element => element.setAttribute('data-max-size', String(maxUploadBytes)) })
       .on('#upload-limit', { element: element => element.setInnerContent(formatSize(maxUploadBytes)) })
       .transform(new Response(template, { headers: pageHeaders }));
-    if (request.method === 'HEAD') return new Response(null, { headers: pageHeaders });
     return response;
   }
 
-  async function download(request, pathname) {
+  async function textFilePage(request, handle, stat, parts) {
+    const name = parts.at(-1);
+    let content = '';
+    let message = '';
+    let status = 200;
+    if (!isTextFile(name)) {
+      message = 'This file type cannot be previewed here. Download this file instead.';
+      status = 415;
+    } else {
+      const chunks = [];
+      let size = 0;
+      if (stat.size <= maxTextViewBytes) {
+        while (size <= maxTextViewBytes) {
+          const buffer = Buffer.alloc(Math.min(64 * 1024, maxTextViewBytes + 1 - size));
+          const { bytesRead } = await handle.read(buffer, 0, buffer.length, size);
+          if (!bytesRead) break;
+          chunks.push(buffer.subarray(0, bytesRead));
+          size += bytesRead;
+        }
+      }
+      if (stat.size > maxTextViewBytes || size > maxTextViewBytes) {
+        message = `This file is too large to view here. The viewer supports files up to ${formatSize(maxTextViewBytes)}; you can still download it.`;
+        status = 413;
+      } else {
+        try {
+          content = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks, size));
+          if (/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u.test(content)) throw new Error('Binary content');
+          if (!content) message = 'This file is empty.';
+        } catch {
+          content = '';
+          message = 'This file is not UTF-8 text. Download it to open it on your computer.';
+          status = 415;
+        }
+      }
+    }
+    if (request.method === 'HEAD') return new Response(null, { status, headers: pageHeaders });
+    return new HTMLRewriter()
+      .on('title', { element: element => element.setInnerContent(`Moxiu / ${name}`) })
+      .on('.page-heading h1', { element: element => element.setInnerContent('Text file viewer ☆') })
+      .on('.page-heading p', { element: element => element.setInnerContent('Notes & explanations') })
+      .on('.breadcrumb', { element: element => element.setInnerContent(`<a href="/home.html">Home</a> &gt; <a href="${fileURL(parts.slice(0, -1), true)}">Files</a> &gt; ${escapeHTML(name)}`, { html: true }) })
+      .on('#folder-path', { element: element => element.setInnerContent(`C:\\files\\${parts.join('\\')}`) })
+      .on('.personal-copy', { element: element => element.setInnerContent('Read the notes below, or download the file.') })
+      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #owner-tools', { element: element => element.remove() })
+      .on('#text-viewer', { element: element => element.removeAttribute('hidden') })
+      .on('#text-back', { element: element => element.setAttribute('href', fileURL(parts.slice(0, -1), true)) })
+      .on('#text-download', { element: element => element.setAttribute('href', fileURL(parts)) })
+      .on('#text-message', { element: element => {
+        if (message) {
+          element.removeAttribute('hidden');
+          element.setInnerContent(message);
+        }
+      } })
+      .on('.text-file-content', { element: element => { if (!content) element.remove(); } })
+      .on('#text-content', { element: element => element.setInnerContent(content) })
+      .transform(new Response(template, { status, headers: pageHeaders }));
+  }
+
+  async function download(request, pathname, { attachmentOnly = false } = {}) {
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
+    if (attachmentOnly && new URL(request.url).searchParams.get('view') === '1') return failure('Not found', 404);
     const parts = pathname.slice('/files/'.length).split('/');
     if (parts.at(-1) === '') parts.pop();
     if (parts.some(part => !validName(part))) return failure('Forbidden', 403);
@@ -166,9 +274,11 @@ export async function createFileHost(rootPath, template, { uploadToken = '', max
       const { handle, stat } = entry;
       if (stat.isDirectory()) {
         if (!pathname.endsWith('/')) return new Response(null, { status: 308, headers: { Location: fileURL(parts, true) } });
+        if (attachmentOnly) return failure('Not found', 404);
         return await directoryPage(request, handle, parts);
       }
       if (pathname.endsWith('/')) return failure('Not found', 404);
+      if (new URL(request.url).searchParams.get('view') === '1') return await textFilePage(request, handle, stat, parts);
       const headers = {
         'Content-Type': 'application/octet-stream',
         'Content-Disposition': `attachment; filename="download"; filename*=UTF-8''${encodeName(parts.at(-1))}`,
@@ -192,6 +302,7 @@ export async function createFileHost(rootPath, template, { uploadToken = '', max
 
   function authorize(request) {
     if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: { Allow: 'POST' } });
+    if (request.headers.get('x-forwarded-proto') === 'http') return failure('Owner actions require HTTPS', 403);
     if (!tokenHash) return failure('Uploads are not configured', 503);
     const authorization = request.headers.get('authorization') || '';
     if (!authorization.startsWith('Bearer ') || !timingSafeEqual(tokenHash, createHash('sha256').update(authorization.slice(7)).digest())) {

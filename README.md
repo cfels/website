@@ -18,25 +18,68 @@ bun run build
 bun run test
 ```
 
-## File host
 
-`/files/` publicly lists and downloads files from the project's `files/` directory, including subfolders. The page displays that directory as `C:\files\`. Add files by copying them into `files/` on the server, or use the owner upload form described below. Rebuilding the site does not touch them. Hosted files are excluded from Git. Search filters file and folder names in the current folder without requiring JavaScript; it is case-insensitive. Open a subfolder to search its contents, or select **Show all** to clear the search.
+## files host
 
-Owner actions are disabled until `FILES_UPLOAD_TOKEN` is set on the server. Generate a random token with `openssl rand -hex 32`, put it in the ignored `.env` file as `FILES_UPLOAD_TOKEN=<your token>`, and restart the server. Open **Files → Webmaster tools**, enter the token, and upload a file or create a folder. Both actions use the folder you're currently browsing. The browser clears the token after each action and does not save it. Use HTTPS on the public site to protect the token in transit.
+first setup `FILES_UPLOAD_TOKEN=<your token>` and done optionally u can setup `FILES_MAX_UPLOAD_MB=100`
 
-Uploads never replace existing entries. The default limit is 10 GiB (10,737,418,240 bytes) per file; set `FILES_MAX_UPLOAD_MB` to change it in MiB (`10240` keeps the default). Remove an older `FILES_MAX_UPLOAD_MB=100` override if you set one previously. Uploads stream to disk, show progress, and can be cancelled. Incomplete uploads are hidden and removed when a transfer fails. Folder creation requires an existing parent; open a folder to create another inside it.
+### Environment settings
 
-The file host requires Linux with `/proc` mounted. It pins the storage directory with a file descriptor, rejects traversal and hidden names, opens every path component without following symlinks, and excludes hard-linked files, special files, and nested mounts (including bind mounts). Downloads are forced attachments with scripts disabled. These restrictions apply to the file endpoints; the Bun process still reads the site's code and static assets. Run it under a dedicated account or container if you also need operating-system isolation of the whole server.
+Set these in the service environment or a local `.env` file. Keep `.env` private and out of Git.
 
-Deploy this feature with `bun run start`; a static-only host cannot run the file browser or uploads. Preserve `files/` as persistent storage across deployments.
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `HOST` | `0.0.0.0` | Address both website and download listeners bind to. Use `127.0.0.1` when Caddy runs on the same host without a container network. |
+| `PORT` | `3000` | Website listener port. Your home Caddy setup expects port `3001`; Docker can also map host port 3001 to the app's port 3000. |
+| `FILES_UPLOAD_TOKEN` | Empty; owner actions disabled | Secret bearer token for uploads and folder creation. Set at least 32 characters; shorter tokens are rejected at startup. Owner actions require HTTPS when accessed through the proxies. |
+| `FILES_MAX_UPLOAD_MB` | `10240` | Maximum bytes per file, expressed in MiB (1024 × 1024 bytes). Must produce a positive safe integer number of bytes. Match the Caddy request-body limits if changing it. |
+| `FILES_DOWNLOAD_PORT` | Unset; no separate listener | Optional attachment-only listener port, e.g. `3003` for uncapped downloads. Valid range is 0–65535; 0 selects a temporary port for testing. |
 
-## Caddy and old browsers
+`bun run dev` uses `--dev` to serve `static/`; production serves `build/`. There is no environment setting for the files directory or text-preview limit: uploads live in `files/` next to `server.js`, and previews are capped at 10 MiB.
 
-`Caddyfile.example` keeps Caddy's certificate management, serves XP/Server 2003 user agents over HTTP, and temporarily redirects other HTTP visitors to HTTPS. Replace `vacpro.fyi` if your domain differs and merge the example into your existing Caddyfile. Run the Bun backend with `HOST=127.0.0.1` and keep port 3000 private. Only ports 80 and 443 should be public. Validate the merged configuration with `caddy validate --config /path/to/Caddyfile --adapter caddyfile` before reloading Caddy.
+Select one or more files in **Webmaster tools → Files** and choose **Upload files**. Files upload one at a time into the current folder, with progress and **Cancel uploads** to stop the queue. Existing files are never replaced; duplicate names are reported and the other selected files continue uploading. Completed uploads remain available if you cancel or lose the connection. The token is cleared after the queue finishes.
 
-Old browsers must visit `http://vacpro.fyi` explicitly. A failed TLS handshake occurs before an HTTP request, so Caddy cannot send an HTTP redirect after it fails. The user-agent check recognizes `Windows NT 5.1` and `5.2`; it is a compatibility heuristic, not a TLS capability test. For other legacy systems, extend the matcher or use a separate HTTP-only hostname.
+Upload a `.txt`, `.md`, or extensionless `README` file to explain the downloads. Select **View** beside it in the file list to read it on the website; **Download** saves the file. The viewer displays plain UTF-8 text up to 10 MiB, including JSON, logs, CSV/TSV, YAML, TOML, INI, CFG, CONF, and FGCONFIG files in subfolders.
 
-The HTTP listener blocks all `/api/files/*` owner actions. Caddy's `X-Forwarded-Proto: http` also hides the owner tools there; public pages and downloads remain available. Legacy browsers that support HSTS can still be forced onto HTTPS by a cached or preloaded policy, including inherited `includeSubDomains`. If your main hostname requires HSTS, use a separate HTTP-only legacy hostname outside that policy. Retain modern TLS settings on the HTTPS listener.
+Folder sizes sum downloadable file bytes in all their subfolders. Hidden files, symlinks, hard links, and other mounts are excluded, just as they are from downloads. Counting stops after 10,000 entries per page or 64 folder levels; larger trees show a dash instead of an incomplete total.
 
-The example allows 10 GiB upload bodies. Keep any existing proxy/CDN body limits at least as large, and avoid buffering entire uploads in Caddy. Downloads and folder listings work without modern JavaScript; webmaster actions require a modern browser. This does not add CSS compatibility with Internet Explorer on XP.
+The upload-token field supports password-manager autofill. In Proton Pass, use a Login item for the website URL with the upload token in its password field. The website still clears the token after an action and does not store it.
 
+### Uncapped downloads with traffic control
+
+Set `FILES_DOWNLOAD_PORT=3003` in the existing website service's environment and restart it. The same Bun process then serves attachments on a second listener using the same file-access protections. This listener does not serve website pages, folder listings, text previews, or upload APIs. If the app runs in Docker, publish port 3003 to the home Caddy container in the same way as port 3001.
+
+For the home setup whose `tc` filter matches TCP source port 3001 and destination 172.18.0.4 on `br-c9dab730152d`, keep that filter and its 312 Kbit/s, 120 ± 30 ms netem rule. Responses from port 3003 do not match it. This only bypasses the shown rule; other network caps still apply.
+
+In the home `http://moxiu.vacpro.fyi` block, replace the existing `reverse_proxy` with the following. Keep the imports, HTTPS owner-action guard, and upload body limit above it. The VPS configuration stays the same.
+
+```caddyfile
+@downloads {
+    method GET HEAD
+    path /files/*
+    not path /files/ /files/*/
+    not query view=1
+}
+
+handle @downloads {
+    reverse_proxy 172.17.0.1:3003 {
+        trusted_proxies 10.0.0.1/32
+    }
+}
+
+handle {
+    reverse_proxy 172.17.0.1:3001 {
+        trusted_proxies 10.0.0.1/32
+    }
+}
+```
+
+Use an internal connection from Caddy for port 3003; clients keep using the normal website URL. Folder links and `?view=1` previews remain on port 3001. Opening a folder URL without its trailing slash only redirects to the capped folder listing.
+
+### Windows XP / Internet Explorer 8
+
+The website serves its Comic Sans MS, Verdana, and Tahoma fonts locally: WOFF2 for modern browsers and [EOT](https://www.w3.org/submissions/EOT/) for IE8. IE8 also loads a separate stylesheet with table layouts, solid-color backgrounds, and PNG versions of the WebP artwork. The frame buttons work without modern JavaScript APIs. All content documents explicitly request standards mode and UTF-8.
+
+Browse using `http://moxiu.vacpro.fyi/` on XP through the existing VPS legacy-HTTP route. File search, downloads, and plain-text previews work without the modern upload script. Webmaster tools remain unavailable in IE8; use a modern browser over HTTPS for owner actions. Keep both Caddy HTTPS owner-action guards enabled. External HTTPS links depend on the destination's support for XP's browser.
+
+The IE8 changes have automated compatibility checks and can be previewed with the fallback stylesheet in a modern browser. Actual Windows XP / IE8 rendering still needs verification on that browser.

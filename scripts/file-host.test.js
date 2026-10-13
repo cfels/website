@@ -21,6 +21,8 @@ beforeAll(async () => {
   await writeFile(resolve(root, 'nested', 'inside.txt'), 'nested download');
   await writeFile(resolve(root, '<script>&".html'), '<script>alert(1)</script>');
   await writeFile(resolve(root, '空 file #%.txt'), 'unicode file');
+  await writeFile(resolve(root, 'README'), 'About these downloads\n\nChoose a folder to find its files.');
+  await writeFile(resolve(root, 'nested', 'readme.md'), '# Folder notes\n\nThese downloads belong together.');
   await writeFile(resolve(root, '.secret'), 'hidden file');
   await symlink(resolve(fixture, 'private.txt'), resolve(root, 'outside-link'));
   await symlink(fixture, resolve(root, 'outside-directory'));
@@ -57,6 +59,33 @@ function upload(name, body = 'uploaded file', authorization = `Bearer ${token}`,
     body
   });
 }
+
+test('attachment-only downloads preserve file protections and never serve preview or listing pages', async () => {
+  async function download(path, method = 'GET') {
+    const request = new Request(origin + path, { method });
+    return host.download(request, decodeURIComponent(new URL(request.url).pathname), { attachmentOnly: true });
+  }
+  const response = await download('/files/hello.txt');
+  expect(response.status).toBe(200);
+  expect(response.headers.get('content-disposition')).toContain('attachment;');
+  expect(await response.text()).toBe('hello ☆');
+  const head = await download('/files/hello.txt', 'HEAD');
+  expect(head.status).toBe(200);
+  expect(await head.text()).toBe('');
+  expect((await download('/files/hello.txt?view=1')).status).toBe(404);
+  expect((await download('/files/')).status).toBe(404);
+  expect((await download('/files/nested/')).status).toBe(404);
+  const directory = await download('/files/nested');
+  expect(directory.status).toBe(308);
+  expect(directory.headers.get('location')).toBe('/files/nested/');
+  for (const name of ['outside-link', 'inside-link', 'outside-hardlink']) {
+    expect((await download('/files/' + name)).status).toBe(404);
+  }
+  for (const name of ['.secret', '%2e%2e%2fprivate.txt', '%00']) {
+    expect((await download('/files/' + name)).status).toBe(403);
+  }
+  expect((await download('/files/hello.txt', 'POST')).status).toBe(405);
+});
 
 function createFolder(name, folder = '', authorization = `Bearer ${token}`) {
   return fetch(origin + '/api/files/mkdir', {
@@ -155,6 +184,233 @@ test('downloads stream original bytes with attachment headers and support HEAD',
   expect(redirect.headers.get('location')).toBe('/files/nested/');
 });
 
+test('text files have view links while existing file links still download originals', async () => {
+  const html = await (await fetch(origin + '/files/')).text();
+  expect(html).toContain('href="/files/hello.txt"');
+  expect(html).toContain('href="/files/hello.txt?view=1" aria-label="View hello.txt"');
+  expect(html).toContain('href="/files/README?view=1"');
+  expect(html).not.toContain('.html?view=1');
+  expect(html).not.toContain('nested/?view=1');
+  expect(html).not.toContain('id="text-viewer"');
+  const nested = await (await fetch(origin + '/files/nested/')).text();
+  expect(nested).toContain('href="/files/nested/readme.md?view=1"');
+});
+
+test('the text viewer renders UTF-8 notes with folder navigation and a download link', async () => {
+  const response = await fetch(origin + '/files/hello.txt?view=1');
+  expect(response.status).toBe(200);
+  expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+  expect(response.headers.get('content-disposition')).toBeNull();
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(response.headers.get('content-security-policy')).toContain("object-src 'none'");
+  const html = await response.text();
+  expect(html).toContain('<title>Moxiu / hello.txt</title>');
+  expect(html).toContain('id="text-content">hello ☆</code>');
+  expect(html).toContain('id="text-back" href="/files/"');
+  expect(html).toContain('id="text-download" href="/files/hello.txt"');
+  for (const id of ['owner-tools', 'file-search', 'file-entries']) expect(html).not.toContain(`id="${id}"`);
+  const nested = await (await fetch(origin + '/files/nested/readme.md?view=1')).text();
+  expect(nested).toContain('C:\\files\\nested\\readme.md');
+  expect(nested).toContain('# Folder notes\n\nThese downloads belong together.');
+  expect(nested).toContain('id="text-back" href="/files/nested/"');
+  expect(nested).toContain('id="text-download" href="/files/nested/readme.md"');
+  const readme = await (await fetch(origin + '/files/README?view=1')).text();
+  expect(readme).toContain('About these downloads');
+  const head = await fetch(origin + '/files/hello.txt?view=1', { method: 'HEAD' });
+  expect(head.status).toBe(200);
+  expect(head.headers.get('content-type')).toBe('text/html; charset=utf-8');
+  expect(await head.text()).toBe('');
+});
+
+test('the text viewer displays markup as text and safely handles unusual filenames and whitespace', async () => {
+  const name = 'notes " onmouseover="evil & %.TXT';
+  const text = '\n  Indented notes\r\n\t空 ☆ &amp;\n</code><script>alert(1)</script><img src=x onerror=alert(2)>';
+  await writeFile(resolve(root, 'nested', name), text);
+  const url = '/files/nested/' + encodeURIComponent(name);
+  const listing = await (await fetch(origin + '/files/nested/')).text();
+  expect(listing).toContain(url + '?view=1');
+  const response = await fetch(origin + url + '?view=1');
+  expect(response.status).toBe(200);
+  const html = await response.text();
+  expect(html).not.toContain('<script>alert(1)</script>');
+  expect(html).not.toContain('<img src=x');
+  expect(html).toContain('&lt;/code&gt;&lt;script&gt;');
+  expect(html).toContain('&amp;amp;');
+  expect(html).toContain('id="text-content">\n  Indented notes\r\n\t空 ☆');
+  for (const page of [listing, html]) {
+    let injected = false;
+    await new HTMLRewriter().on('*', { element(element) {
+      if (element.getAttribute('onmouseover') !== null || element.getAttribute('onerror') !== null) injected = true;
+    } }).transform(new Response(page)).text();
+    expect(injected).toBe(false);
+  }
+  expect(await (await fetch(origin + url)).text()).toBe(text);
+});
+
+test('empty, binary, unsupported, and oversized files have appropriate viewer responses', async () => {
+  await writeFile(resolve(root, 'empty-view.txt'), '');
+  await writeFile(resolve(root, 'binary-view.txt'), new Uint8Array([0, 1, 2]));
+  await writeFile(resolve(root, 'invalid-utf8.txt'), new Uint8Array([0xff, 0xfe]));
+  const previewLimit = 10 * 1024 * 1024;
+  await writeFile(resolve(root, 'view-at-limit.txt'), 'x'.repeat(previewLimit));
+  await writeFile(resolve(root, 'view-too-large.txt'), 'x'.repeat(previewLimit + 1));
+  const empty = await fetch(origin + '/files/empty-view.txt?view=1');
+  expect(empty.status).toBe(200);
+  expect(await empty.text()).toContain('This file is empty.');
+  for (const name of ['binary-view.txt', 'invalid-utf8.txt']) {
+    const response = await fetch(origin + '/files/' + name + '?view=1');
+    expect(response.status).toBe(415);
+    const html = await response.text();
+    expect(html).toContain('This file is not UTF-8 text.');
+    expect(html).toContain(`id="text-download" href="/files/${name}"`);
+    expect(html).not.toContain('id="text-content"');
+  }
+  const unsupported = await fetch(origin + '/files/' + encodeURIComponent('<script>&".html') + '?view=1');
+  expect(unsupported.status).toBe(415);
+  expect(await unsupported.text()).toContain('This file type cannot be previewed here.');
+  expect((await fetch(origin + '/files/view-at-limit.txt?view=1')).status).toBe(200);
+  const large = await fetch(origin + '/files/view-too-large.txt?view=1');
+  expect(large.status).toBe(413);
+  const html = await large.text();
+  expect(html).toContain('This file is too large to view here.');
+  expect(html).toContain('10.0 MiB');
+  expect(html).toContain('id="text-download" href="/files/view-too-large.txt"');
+  expect(html).not.toContain('id="text-content"');
+  const original = await fetch(origin + '/files/view-too-large.txt');
+  expect(original.status).toBe(200);
+  expect((await original.arrayBuffer()).byteLength).toBe(previewLimit + 1);
+  const head = await fetch(origin + '/files/view-too-large.txt?view=1', { method: 'HEAD' });
+  expect(head.status).toBe(413);
+  expect(await head.text()).toBe('');
+});
+
+test('JSON and configuration previews larger than 1 MiB preserve UTF-8 characters and escape markup', async () => {
+  const text = 'x'.repeat(65535) + '☆' + 'y'.repeat(2 * 1024 * 1024) + '\n</code><script>alert(1)</script>\n';
+  for (const name of ['large-notes.json', 'settings.fgconfig']) {
+    await writeFile(resolve(root, name), text);
+    const listing = await (await fetch(origin + '/files/?q=' + name)).text();
+    expect(listing).toContain(`href="/files/${name}?view=1"`);
+    const response = await fetch(origin + '/files/' + name + '?view=1');
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('x☆y');
+    expect(html).toContain('&lt;/code&gt;&lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(html).not.toContain('<script>alert(1)</script>');
+    const original = await fetch(origin + '/files/' + name);
+    expect(await original.text()).toBe(text);
+  }
+});
+
+test('folder sizes include nested downloads, exclude restricted entries, and reflect newly uploaded files', async () => {
+  const sized = resolve(root, 'sized');
+  await mkdir(resolve(sized, 'child'), { recursive: true });
+  await mkdir(resolve(root, 'empty-folder'));
+  await writeFile(resolve(sized, 'visible.txt'), 'abc');
+  await writeFile(resolve(sized, 'child', 'data.bin'), '12345');
+  await writeFile(resolve(sized, '.private'), 'hidden data must not count');
+  await symlink(resolve(fixture, 'private.txt'), resolve(sized, 'outside.txt'));
+  await symlink(fixture, resolve(sized, 'outside-folder'));
+  await symlink(resolve(sized, 'visible.txt'), resolve(sized, 'inside.txt'));
+  await link(resolve(fixture, 'private.txt'), resolve(sized, 'hard-linked.txt'));
+  const html = await (await fetch(origin + '/files/?q=sized')).text();
+  const row = html.match(/<tr>[\s\S]*?<\/tr>/g).find(row => row.includes('href="/files/sized/"'));
+  expect(row).toContain('>8 B</td>');
+  const nested = await (await fetch(origin + '/files/sized/')).text();
+  const child = nested.match(/<tr>[\s\S]*?<\/tr>/g).find(row => row.includes('href="/files/sized/child/"'));
+  expect(child).toContain('>5 B</td>');
+  for (const name of ['.private', 'outside.txt', 'outside-folder', 'inside.txt', 'hard-linked.txt']) expect(nested).not.toContain(name);
+  expect((await upload('new.txt', 'four', undefined, { 'X-File-Folder': 'sized/child' })).status).toBe(201);
+  const updated = await (await fetch(origin + '/files/?q=sized')).text();
+  const updatedRow = updated.match(/<tr>[\s\S]*?<\/tr>/g).find(row => row.includes('href="/files/sized/"'));
+  expect(updatedRow).toContain('>12 B</td>');
+  const empty = await (await fetch(origin + '/files/?q=empty-folder')).text();
+  expect(empty).toContain('>0 B</td>');
+});
+
+test('deep folders show an unavailable size instead of a partial total and remain browsable', async () => {
+  let path = resolve(root, 'deep-folder');
+  await mkdir(path);
+  for (let depth = 0; depth < 65; depth++) {
+    path = resolve(path, 'child');
+    await mkdir(path);
+  }
+  await writeFile(resolve(path, 'notes.txt'), 'deep notes');
+  const response = await fetch(origin + '/files/?q=deep-folder');
+  expect(response.status).toBe(200);
+  const html = await response.text();
+  const row = html.match(/<tr>[\s\S]*?<\/tr>/g).find(row => row.includes('href="/files/deep-folder/"'));
+  expect(row).toContain('>—</td>');
+  expect(html).toContain('A dash means its size is unavailable; open the folder to browse its contents.');
+  expect((await fetch(origin + '/files/deep-folder/child/')).status).toBe(200);
+  const head = await fetch(origin + '/files/deep-folder/', { method: 'HEAD' });
+  expect(head.status).toBe(200);
+  expect(head.headers.get('content-type')).toBe('text/html; charset=utf-8');
+  expect(await head.text()).toBe('');
+  expect((await fetch(origin + '/files/deep-folder/?q=' + 'x'.repeat(256), { method: 'HEAD' })).status).toBe(400);
+});
+
+test('folder-size counting is bounded even when a folder contains many hidden entries', async () => {
+  const countFixture = await mkdtemp(resolve(tmpdir(), 'website-folder-size-'));
+  let countHost;
+  try {
+    await mkdir(resolve(countFixture, 'wide'));
+    for (let start = 0; start < 10001; start += 100) {
+      const end = Math.min(start + 100, 10001);
+      await Promise.all(Array.from({ length: end - start }, (_, index) => writeFile(resolve(countFixture, 'wide', `.hidden-${start + index}`), '')));
+    }
+    await writeFile(resolve(countFixture, 'wide', 'public.txt'), 'public');
+    countHost = await createFileHost(countFixture, await Bun.file(resolve(import.meta.dir, '../static/files.html')).text());
+    const response = await countHost.download(new Request(origin + '/files/'), '/files/');
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('href="/files/wide/"');
+    expect(html).toContain('>—</td>');
+    expect(html).not.toContain('.hidden-');
+    expect(html).not.toContain('>0 B</td>');
+  } finally {
+    if (countHost) await countHost.close();
+    await rm(countFixture, { recursive: true, force: true });
+  }
+}, 15000);
+
+test('the token field supports password autofill without putting credentials in URLs or accepting form-body passwords', async () => {
+  const html = await (await fetch(origin + '/files/')).text();
+  let tokenForm;
+  let tokenField;
+  await new HTMLRewriter()
+    .on('#owner-token-form', { element(element) {
+      tokenForm = { method: element.getAttribute('method'), action: element.getAttribute('action'), autocomplete: element.getAttribute('autocomplete') };
+    } })
+    .on('#owner-token', { element(element) {
+      tokenField = { name: element.getAttribute('name'), type: element.getAttribute('type'), autocomplete: element.getAttribute('autocomplete'), value: element.getAttribute('value') };
+    } })
+    .transform(new Response(html)).text();
+  expect(tokenForm).toEqual({ method: 'post', action: '/api/files/upload', autocomplete: 'on' });
+  expect(tokenField).toEqual({ name: 'password', type: 'password', autocomplete: 'current-password', value: null });
+  expect(html).not.toContain(token);
+  const response = await fetch(origin + '/api/files/upload', {
+    method: 'POST',
+    body: new URLSearchParams({ password: token })
+  });
+  expect(response.status).toBe(401);
+  expect(await response.text()).not.toContain(token);
+});
+
+test('text viewing retains restrictions on paths, hidden files, and linked files', async () => {
+  for (const path of ['%2e%2e%2fprivate.txt', '%2fetc%2fpasswd', 'nested%2f..%2f..%2fprivate.txt', '.secret', '%00']) {
+    expect((await fetch(origin + '/files/' + path + '?view=1')).status).toBe(403);
+  }
+  for (const path of ['outside-link', 'outside-directory/private.txt', 'inside-link', 'outside-hardlink', 'missing.txt', 'hello.txt/']) {
+    const response = await fetch(origin + '/files/' + path + '?view=1');
+    expect(response.status).toBe(404);
+    expect(await response.text()).not.toContain('outside secret');
+  }
+  const response = await fetch(origin + '/files/hello.txt?view=1', { headers: { 'X-Forwarded-Proto': 'http' } });
+  expect(response.status).toBe(200);
+  expect(await response.text()).toContain('hello ☆');
+  expect((await fetch(origin + '/files/hello.txt?view=1', { method: 'DELETE' })).status).toBe(405);
+});
+
 test('rejects traversal, hidden paths, links, unsupported methods, and nonexistent files', async () => {
   for (const path of ['%2e%2e%2fprivate.txt', '%2fetc%2fpasswd', 'nested%2f..%2f..%2fprivate.txt', 'nested%5c..%5cprivate.txt', '%00', '.secret', '//hello.txt']) {
     expect((await fetch(origin + '/files/' + path)).status).toBe(403);
@@ -176,6 +432,42 @@ test('owner authentication is required before creating uploads', async () => {
   expect((await upload('cross-site.txt', 'not allowed', undefined, { 'Sec-Fetch-Site': 'cross-site' })).status).toBe(403);
   expect((await createFolder('unauthorized-folder', '', 'Bearer incorrect')).status).toBe(401);
   expect((await fetch(origin + '/api/files/mkdir')).status).toBe(405);
+});
+
+test('forwarded HTTP owner actions are rejected even with the correct token', async () => {
+  const uploadResponse = await upload('insecure-upload.txt', 'must not be saved', undefined, { 'X-Forwarded-Proto': 'http' });
+  expect(uploadResponse.status).toBe(403);
+  expect(await uploadResponse.text()).toBe('Owner actions require HTTPS');
+  const folderResponse = await fetch(origin + '/api/files/mkdir', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'X-File-Name': 'insecure-folder', 'X-Forwarded-Proto': 'http' }
+  });
+  expect(folderResponse.status).toBe(403);
+  expect(await Bun.file(resolve(root, 'insecure-upload.txt')).exists()).toBe(false);
+  expect(await readdir(root)).not.toContain('insecure-folder');
+  expect((await readdir(root)).some(name => name.startsWith('.upload-'))).toBe(false);
+  const secure = await upload('secure-upload.txt', 'secure content', undefined, { 'X-Forwarded-Proto': 'https' });
+  expect(secure.status).toBe(201);
+  expect(await Bun.file(resolve(root, 'secure-upload.txt')).text()).toBe('secure content');
+});
+
+test('folder actions reject cross-site requests and both owner endpoints reject malformed encoded names', async () => {
+  const crossSite = await fetch(origin + '/api/files/mkdir', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'X-File-Name': 'cross-site-folder', 'Sec-Fetch-Site': 'cross-site' }
+  });
+  expect(crossSite.status).toBe(403);
+  expect(await readdir(root)).not.toContain('cross-site-folder');
+  for (const path of ['/api/files/upload', '/api/files/mkdir']) {
+    for (const header of ['X-File-Name', 'X-File-Folder']) {
+      const response = await fetch(origin + path, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'X-File-Name': 'malformed-name.txt', [header]: '%zz' }
+      });
+      expect(response.status).toBe(400);
+    }
+  }
+  expect(await Bun.file(resolve(root, 'malformed-name.txt')).exists()).toBe(false);
 });
 
 test('owners can create folders and upload files into nested folders without replacing entries', async () => {

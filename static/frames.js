@@ -1,7 +1,10 @@
-const frameset = document.querySelector('frameset');
-const narrow = matchMedia('(max-width: 600px)');
+var frameset = document.querySelector('frameset');
+var narrow = window.matchMedia ? window.matchMedia('(max-width: 600px)') : null;
 function fitFrames() {
-  frameset.rows = narrow.matches ? '145,*,124' : '105,*,58';
+  frameset.rows = narrow && narrow.matches ? '145,*,124' : '105,*,58';
 }
 fitFrames();
-narrow.addEventListener('change', fitFrames);
+if (narrow) {
+  if (narrow.addEventListener) narrow.addEventListener('change', fitFrames);
+  else narrow.addListener(fitFrames);
+}
