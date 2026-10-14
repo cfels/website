@@ -35,6 +35,8 @@ set `FILES_UPLOAD_TOKEN` to a random secret with at least 32 characters to enabl
 
 uploads are **10 GiB per file** by default. `FILES_MAX_UPLOAD_MB=10240` is optional unless you want to change that. text files, Markdown and other supported text formats have a preview, up to 10 MiB.
 
+each file has a **SHA-256** link to see its original checksum and download the file. checksums are calculated on demand from the original bytes, including for binary and large files. text previews link to the checksum too. the server keeps up to 1,000 verified hashes in memory and checks file identity, size and timestamps before reusing one. checksum requests have their own concurrency limit so they don't occupy listing or preview slots.
+
 search looks through all folders and subfolders and shows the full path. it checks up to 10,000 entries, goes 64 folders deep and shows up to 1,000 matches. normal folder listings have the same entry and result limits. if there's more, the page tells you; you can still browse the folders.
 
 downloads & random stuff. help yourself :p
@@ -52,6 +54,7 @@ downloads & random stuff. help yourself :p
 | `FILES_STORAGE_LIMIT_MB` | `102400` | total file stash limit in MiB. default is 100 GiB; uploads reserve room before writing. |
 | `FILES_MIN_FREE_SPACE_MB` | `1024` | free disk space to leave available, in MiB. default is 1 GiB, checked before uploads and folder creation. |
 | `FILES_MAX_CONCURRENT_PAGES` | `4` | file listings and previews served at once, until the response finishes or is cancelled. |
+| `FILES_MAX_CONCURRENT_CHECKSUMS` | `2` | checksum requests at once, separate from listings and previews, until the response finishes or is cancelled. |
 | `FILES_MAX_CONCURRENT_DOWNLOADS` | `16` | downloads at once. there's no speed cap per download. |
 | `FILES_MAX_CONCURRENT_UPLOADS` | `2` | uploads and folder creation at once. |
 
@@ -77,6 +80,8 @@ use the IP after `src` for `TRUSTED_PROXY_IPS`, then restart the website. for an
 home Caddy still needs `trusted_proxies 10.0.0.1/32` for the VPS. that's a separate setting: Caddy trusts the VPS, Bun trusts home Caddy. with the wrong Bun setting, owner actions return 403.
 
 `FILES_DOWNLOAD_PORT` is optional. it's there so Caddy can send downloads to a different port when the website port is slowed down for retro loading.
+
+when using that port, keep both `not query view=1` and `not query sha256=1` in Caddy's download matcher so previews and checksum pages go to the website port.
 
 ## security
 

@@ -36,6 +36,7 @@ http://moxiu.vacpro.fyi {
         method GET HEAD
         path_regexp downloadable ^/files/.+\.[^/]+$
         not query view=1
+        not query sha256=1
     }
 
     handle @downloads {

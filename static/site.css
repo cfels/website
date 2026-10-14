@@ -148,9 +148,9 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .file-list th:nth-child(2) { width: 80px; }
 .file-list th:nth-child(3) { width: 116px; }
 .file-list td:first-child { overflow-wrap: anywhere; }
-.file-download-link, .file-download-link:visited, .file-view-link, .file-view-link:visited, #text-download, #text-download:visited { color: #b12f66; }
-.file-download-link:hover, .file-view-link:hover, #text-download:hover { color: #ce286d; }
-.file-view-link { margin-left: 8px; white-space: nowrap; font: 11px Verdana, 'Moxiu Japanese', Arial, sans-serif; }
+.file-download-link, .file-download-link:visited, .file-view-link, .file-view-link:visited, .file-checksum-link, .file-checksum-link:visited, #text-download, #text-download:visited { color: #b12f66; }
+.file-download-link:hover, .file-view-link:hover, .file-checksum-link:hover, #text-download:hover { color: #ce286d; }
+.file-view-link, .file-checksum-link { margin-left: 8px; white-space: nowrap; font: 11px Verdana, 'Moxiu Japanese', Arial, sans-serif; }
 .text-file-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .text-file-content { margin: 12px 0 0; padding: 12px; border: 1px dotted #ed789a; background: #fff9e9; font: 12px/1.6 'Courier New', monospace; white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; }
 .text-file-content:focus-visible { outline: 2px dotted #000; outline-offset: 2px; }

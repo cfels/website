@@ -12,6 +12,7 @@ const maxFolderSizeDepth = 64;
 const maxSearchEntries = 10000;
 const maxSearchDepth = 64;
 const maxSearchResults = 1000;
+const maxChecksumCacheEntries = 1000;
 const hiddenErrors = new Set(['ENOENT', 'ENOTDIR', 'ELOOP', 'EACCES', 'EPERM']);
 const pageHeaders = {
   'Content-Type': 'text/html; charset=utf-8',
@@ -70,17 +71,19 @@ export async function createFileHost(rootPath, template, {
   uploadToken = '', maxUploadBytes = defaultMaxUploadBytes,
   isSecureRequest = () => false, maxStorageBytes = 100 * 1024 * 1024 * 1024,
   minFreeBytes = 1024 * 1024 * 1024, maxConcurrentPages = 4,
-  maxConcurrentDownloads = 16, maxConcurrentUploads = 2
+  maxConcurrentDownloads = 16, maxConcurrentUploads = 2, maxConcurrentChecksums = 2
 } = {}) {
   if (process.platform !== 'linux') throw new Error('The file host requires Linux and /proc for restricted filesystem access.');
   if (uploadToken && uploadToken.length < 32) throw new Error('FILES_UPLOAD_TOKEN must contain at least 32 characters.');
   if (!Number.isSafeInteger(maxUploadBytes) || maxUploadBytes < 1) throw new Error('The upload size limit must be a positive integer.');
   if (!Number.isSafeInteger(maxStorageBytes) || maxStorageBytes < 1) throw new Error('The storage limit must be a positive integer.');
   if (!Number.isSafeInteger(minFreeBytes) || minFreeBytes < 0) throw new Error('The free-space reserve must be a nonnegative integer.');
-  if ([maxConcurrentPages, maxConcurrentDownloads, maxConcurrentUploads].some(value => !Number.isSafeInteger(value) || value < 1 || value > 1024)) throw new Error('Concurrency limits must be integers between 1 and 1024.');
+  if ([maxConcurrentPages, maxConcurrentDownloads, maxConcurrentUploads, maxConcurrentChecksums].some(value => !Number.isSafeInteger(value) || value < 1 || value > 1024)) throw new Error('Concurrency limits must be integers between 1 and 1024.');
   if (typeof isSecureRequest !== 'function') throw new Error('A request security policy is required.');
   const pageSlots = { active: 0, limit: maxConcurrentPages };
   const downloadSlots = { active: 0, limit: maxConcurrentDownloads };
+  const checksumSlots = { active: 0, limit: maxConcurrentChecksums };
+  const checksumCache = new Map();
   let activeMutations = 0;
   let reservedBytes = 0;
   let publishedBytes = 0n;
@@ -264,8 +267,9 @@ export async function createFileHost(rootPath, template, {
       const url = fileURL(entry.parts, entry.directory);
       const name = search ? entry.parts.join('\\') : entry.name;
       const view = !entry.directory && isTextFile(entry.name) ? ` <a class="file-view-link" href="${url}?view=1" aria-label="View ${escapeHTML(name)}">View</a>` : '';
+      const checksum = entry.directory ? '' : ` <a class="file-checksum-link" href="${url}?sha256=1" aria-label="SHA-256 checksum for ${escapeHTML(name)}">SHA-256</a>`;
       const size = entry.size === null ? '—' : formatSize(entry.size);
-      return `<tr><td><a${entry.directory ? '' : ' class="file-download-link"'} href="${url}">${escapeHTML(name)}${entry.directory ? '\\' : ''}</a>${view}</td><td${entry.directory ? ' title="Total size of downloadable files in this folder and its subfolders"' : ''}>${size}</td><td><time datetime="${entry.modified}">${entry.modified.slice(0, 10)}</time></td></tr>`;
+      return `<tr><td><a${entry.directory ? '' : ' class="file-download-link"'} href="${url}">${escapeHTML(name)}${entry.directory ? '\\' : ''}</a>${view}${checksum}</td><td${entry.directory ? ' title="Total size of downloadable files in this folder and its subfolders"' : ''}>${size}</td><td><time datetime="${entry.modified}">${entry.modified.slice(0, 10)}</time></td></tr>`;
     }).join('');
     if (!entries.length) rows += `<tr><td colspan="3">${query ? 'No matching files or folders.' : 'No files here yet :p'}</td></tr>`;
 
@@ -287,7 +291,7 @@ export async function createFileHost(rootPath, template, {
       .on('#folder-size-note', { element: element => {
         if (entries.some(entry => entry.size === null)) element.setInnerContent('Folder sizes include downloadable files in subfolders. A dash means its size is unavailable; open the folder to browse its contents.');
       } })
-      .on('#text-viewer', { element: element => element.remove() })
+      .on('#text-viewer, #file-checksum', { element: element => element.remove() })
       .on('#owner-tools', { element: element => {
         if (!tokenHash || isSecureRequest(request) !== true) element.remove();
         else element.setAttribute('data-folder', encodeName(parts.join('/')));
@@ -342,10 +346,11 @@ export async function createFileHost(rootPath, template, {
       .on('.breadcrumb', { element: element => element.setInnerContent(`<a href="/home.html">Home</a> &gt; <a href="${fileURL(parts.slice(0, -1), true)}">Files</a> &gt; ${escapeHTML(name)}`, { html: true }) })
       .on('#folder-path', { element: element => element.setInnerContent(`C:\\files\\${parts.join('\\')}`) })
       .on('.personal-copy', { element: element => element.setInnerContent('Read the notes below, or download the file.') })
-      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #owner-tools', { element: element => element.remove() })
+      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #owner-tools, #file-checksum', { element: element => element.remove() })
       .on('#text-viewer', { element: element => element.removeAttribute('hidden') })
       .on('#text-back', { element: element => element.setAttribute('href', fileURL(parts.slice(0, -1), true)) })
       .on('#text-download', { element: element => element.setAttribute('href', fileURL(parts)) })
+      .on('#text-checksum', { element: element => element.setAttribute('href', `${fileURL(parts)}?sha256=1`) })
       .on('#text-message', { element: element => {
         if (message) {
           element.removeAttribute('hidden');
@@ -357,9 +362,53 @@ export async function createFileHost(rootPath, template, {
       .transform(new Response(template, { status, headers: pageHeaders }));
   }
 
+  async function checksumPage(request, handle, stat, parts) {
+    if (request.method === 'HEAD') return new Response(null, { headers: pageHeaders });
+    const before = await handle.stat({ bigint: true });
+    if (before.size !== BigInt(stat.size)) return failure('File changed while calculating its checksum; try again', 409);
+    const key = [before.dev, before.ino, before.size, before.mtimeNs, before.ctimeNs].join(':');
+    let digest = checksumCache.get(key);
+    if (!digest) {
+      const hash = createHash('sha256');
+      const buffer = Buffer.alloc(64 * 1024);
+      let position = 0;
+      while (position < stat.size) {
+        if (request.signal.aborted) return new Response(null, { status: 499 });
+        const { bytesRead } = await handle.read(buffer, 0, Math.min(buffer.length, stat.size - position), position);
+        if (!bytesRead) return failure('File changed while calculating its checksum; try again', 409);
+        hash.update(buffer.subarray(0, bytesRead));
+        position += bytesRead;
+      }
+      digest = hash.digest('hex');
+    }
+    const after = await handle.stat({ bigint: true });
+    if (before.size !== after.size || before.mtimeNs !== after.mtimeNs || before.ctimeNs !== after.ctimeNs) return failure('File changed while calculating its checksum; try again', 409);
+    if (request.signal.aborted) return new Response(null, { status: 499 });
+    checksumCache.delete(key);
+    checksumCache.set(key, digest);
+    if (checksumCache.size > maxChecksumCacheEntries) checksumCache.delete(checksumCache.keys().next().value);
+    const name = parts.at(-1);
+    return new HTMLRewriter()
+      .on('title', { element: element => element.setInnerContent(`Moxiu / ${name} / SHA-256`) })
+      .on('.page-heading h1', { element: element => element.setInnerContent('File checksum ☆') })
+      .on('.page-heading p', { element: element => element.setInnerContent('SHA-256 of the original file') })
+      .on('.breadcrumb', { element: element => element.setInnerContent(`<a href="/home.html">Home</a> &gt; <a href="${fileURL(parts.slice(0, -1), true)}">Files</a> &gt; ${escapeHTML(name)}`, { html: true }) })
+      .on('#folder-path', { element: element => element.setInnerContent(`C:\\files\\${parts.join('\\')}`) })
+      .on('.personal-copy', { element: element => element.setInnerContent('Check your download against the original file :p') })
+      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #owner-tools, #text-viewer', { element: element => element.remove() })
+      .on('#file-checksum', { element: element => element.removeAttribute('hidden') })
+      .on('#checksum-back', { element: element => element.setAttribute('href', fileURL(parts.slice(0, -1), true)) })
+      .on('#checksum-download', { element: element => element.setAttribute('href', fileURL(parts)) })
+      .on('#checksum-preview', { element: element => { if (!isTextFile(name)) element.remove(); } })
+      .on('#checksum-view', { element: element => element.setAttribute('href', `${fileURL(parts)}?view=1`) })
+      .on('#checksum-value', { element: element => element.setInnerContent(digest) })
+      .transform(new Response(template, { headers: pageHeaders }));
+  }
+
   async function download(request, pathname, { attachmentOnly = false } = {}) {
     if (request.method !== 'GET' && request.method !== 'HEAD') return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
-    if (attachmentOnly && new URL(request.url).searchParams.get('view') === '1') return failure('Not found', 404);
+    const query = new URL(request.url).searchParams;
+    if (attachmentOnly && (query.get('view') === '1' || query.get('sha256') === '1')) return failure('Not found', 404);
     const parts = pathname.slice('/files/'.length).split('/');
     if (parts.at(-1) === '') parts.pop();
     if (parts.some(part => !validName(part))) return failure('Forbidden', 403);
@@ -375,7 +424,8 @@ export async function createFileHost(rootPath, template, {
         return await boundedResponse(pageSlots, request, () => directoryPage(request, handle, parts));
       }
       if (pathname.endsWith('/')) return failure('Not found', 404);
-      if (new URL(request.url).searchParams.get('view') === '1') return await boundedResponse(pageSlots, request, () => textFilePage(request, handle, stat, parts));
+      if (query.get('sha256') === '1') return await boundedResponse(checksumSlots, request, () => checksumPage(request, handle, stat, parts));
+      if (query.get('view') === '1') return await boundedResponse(pageSlots, request, () => textFilePage(request, handle, stat, parts));
       const name = parts.at(-1);
       const fallbackName = name.replace(/[^\x20-\x7e]|["%:<>?*|]/g, '_');
       const headers = {

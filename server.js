@@ -25,6 +25,7 @@ const fileHost = await createFileHost(resolve(import.meta.dir, 'files'), await B
   maxStorageBytes: process.env.FILES_STORAGE_LIMIT_MB === undefined ? undefined : Number(process.env.FILES_STORAGE_LIMIT_MB) * 1024 * 1024,
   minFreeBytes: process.env.FILES_MIN_FREE_SPACE_MB === undefined ? undefined : Number(process.env.FILES_MIN_FREE_SPACE_MB) * 1024 * 1024,
   maxConcurrentPages: process.env.FILES_MAX_CONCURRENT_PAGES === undefined ? undefined : Number(process.env.FILES_MAX_CONCURRENT_PAGES),
+  maxConcurrentChecksums: process.env.FILES_MAX_CONCURRENT_CHECKSUMS === undefined ? undefined : Number(process.env.FILES_MAX_CONCURRENT_CHECKSUMS),
   maxConcurrentDownloads: process.env.FILES_MAX_CONCURRENT_DOWNLOADS === undefined ? undefined : Number(process.env.FILES_MAX_CONCURRENT_DOWNLOADS),
   maxConcurrentUploads: process.env.FILES_MAX_CONCURRENT_UPLOADS === undefined ? undefined : Number(process.env.FILES_MAX_CONCURRENT_UPLOADS)
 });
@@ -57,7 +58,10 @@ async function handleRequest(request, server) {
   if (pathname === '/files') {
     return new Response(null, { status: 308, headers: { Location: '/files/' } });
   }
-  if (pathname.startsWith('/files/')) return fileHost.download(request, pathname);
+  if (pathname.startsWith('/files/')) {
+    if (url.searchParams.get('sha256') === '1') server.timeout(request, 255);
+    return fileHost.download(request, pathname);
+  }
   if (pathname === '/files.html') {
     return new Response(null, { status: 308, headers: { Location: '/files/' } });
   }

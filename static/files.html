@@ -38,9 +38,15 @@
         <tbody id="file-entries"><tr><td colspan="3">Visit <a href="/files/">the file stash</a> to browse downloads.</td></tr></tbody>
       </table>
       <section id="text-viewer" aria-label="Text file viewer" hidden>
-        <p class="text-file-actions"><a id="text-back" href="/files/">« Back to folder</a> · <a id="text-download" href="/files/">Download</a></p>
+        <p class="text-file-actions"><a id="text-back" href="/files/">« Back to folder</a> · <a id="text-download" href="/files/">Download</a> · <a id="text-checksum" href="/files/">SHA-256</a></p>
         <p id="text-message" role="status" hidden></p>
         <pre class="text-file-content" tabindex="0" aria-label="File contents"><code id="text-content"></code></pre>
+      </section>
+      <section id="file-checksum" aria-label="File checksum" hidden>
+        <p class="text-file-actions"><a id="checksum-back" href="/files/">« Back to folder</a> · <a id="checksum-download" class="file-download-link" href="/files/">Download original</a><span id="checksum-preview"> · <a id="checksum-view" href="/files/">View</a></span></p>
+        <h3>SHA-256</h3>
+        <pre class="text-file-content" tabindex="0" aria-label="SHA-256 checksum"><code id="checksum-value"></code></pre>
+        <p class="small-note">This checksum is calculated from the original file bytes. Compare it with the SHA-256 of your downloaded copy.</p>
       </section>
       <details id="owner-tools" class="owner-upload" data-folder="">
         <summary>Webmaster tools</summary>

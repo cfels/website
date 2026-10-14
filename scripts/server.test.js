@@ -35,7 +35,7 @@ beforeAll(async () => {
 });
 
 test('download listener does not serve website pages, previews, or owner actions', async () => {
-  for (const path of ['/', '/home.html', '/files/', '/files/example.txt?view=1', '/api/files/upload']) {
+  for (const path of ['/', '/home.html', '/files/', '/files/example.txt?view=1', '/files/example.txt?sha256=1', '/api/files/upload']) {
     expect((await fetch(downloadOrigin + path)).status).toBe(404);
   }
   for (const path of ['/api/files/upload', '/api/files/mkdir', '/files/example.txt']) {

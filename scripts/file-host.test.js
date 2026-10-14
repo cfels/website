@@ -1,7 +1,8 @@
-import { afterAll, beforeAll, expect, test } from 'bun:test';
-import { link, mkdir, mkdtemp, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { afterAll, beforeAll, expect, spyOn, test } from 'bun:test';
+import { link, mkdir, mkdtemp, open, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import { createFileHost, defaultMaxUploadBytes } from '../file-host.js';
 
 let fixture;
@@ -74,6 +75,7 @@ test('attachment-only downloads preserve file protections and never serve previe
   expect(head.status).toBe(200);
   expect(await head.text()).toBe('');
   expect((await download('/files/hello.txt?view=1')).status).toBe(404);
+  expect((await download('/files/hello.txt?sha256=1')).status).toBe(404);
   expect((await download('/files/')).status).toBe(404);
   expect((await download('/files/nested/')).status).toBe(404);
   const directory = await download('/files/nested');
@@ -111,6 +113,16 @@ function localUpload(name, body, headers = {}) {
   return new Request(origin + '/api/files/upload', { method: 'POST', body, headers: { Authorization: `Bearer ${token}`, 'X-File-Name': name, ...headers } });
 }
 
+async function observeFileReads(path, action) {
+  const handle = await open(path);
+  const prototype = Object.getPrototypeOf(handle);
+  const read = prototype.read;
+  await handle.close();
+  const reads = spyOn(prototype, 'read');
+  try { await action(reads, read); }
+  finally { reads.mockRestore(); }
+}
+
 test('owner actions and token fields fail closed without verified transport even with forged headers', async () => {
   for (const policy of [undefined, () => false, async () => false]) {
     await isolatedHost({ uploadToken: token, isSecureRequest: policy }, async restricted => {
@@ -125,7 +137,7 @@ test('owner actions and token fields fail closed without verified transport even
 });
 
 test('page and download slots remain bounded until bodies finish or are cancelled', async () => {
-  await isolatedHost({ maxConcurrentPages: 1, maxConcurrentDownloads: 1 }, async (limited, path) => {
+  await isolatedHost({ maxConcurrentPages: 1, maxConcurrentDownloads: 1, maxConcurrentChecksums: 1 }, async (limited, path) => {
     await writeFile(resolve(path, 'notes.txt'), 'x'.repeat(512 * 1024));
     const page = await limited.download(new Request(origin + '/files/'), '/files/');
     expect(page.status).toBe(200);
@@ -140,6 +152,18 @@ test('page and download slots remain bounded until bodies finish or are cancelle
     const resumed = await limited.download(new Request(origin + '/files/'), '/files/');
     expect(resumed.status).toBe(200);
     await resumed.text();
+    const checksum = await limited.download(new Request(origin + '/files/notes.txt?sha256=1'), '/files/notes.txt');
+    expect(checksum.status).toBe(200);
+    expect((await limited.download(new Request(origin + '/files/notes.txt?sha256=1'), '/files/notes.txt')).status).toBe(429);
+    await checksum.body.cancel();
+    const checksumHead = await limited.download(new Request(origin + '/files/notes.txt?sha256=1', { method: 'HEAD' }), '/files/notes.txt');
+    expect(checksumHead.status).toBe(200);
+    expect(await checksumHead.text()).toBe('');
+    const checksumAbort = new AbortController();
+    checksumAbort.abort();
+    const cancelledChecksum = await limited.download(new Request(origin + '/files/notes.txt?sha256=1', { signal: checksumAbort.signal }), '/files/notes.txt');
+    expect(cancelledChecksum.status).toBe(499);
+    expect((await limited.download(new Request(origin + '/files/notes.txt?sha256=1', { method: 'HEAD' }), '/files/notes.txt')).status).toBe(200);
     const download = await limited.download(new Request(origin + '/files/notes.txt'), '/files/notes.txt');
     expect(download.status).toBe(200);
     expect((await limited.download(new Request(origin + '/files/notes.txt'), '/files/notes.txt')).status).toBe(429);
@@ -336,6 +360,7 @@ test('recursive search caps rendered matches and reports incomplete results', as
     expect(html).toContain('Search limits reached; these results may be incomplete.');
     expect((html.match(/class="file-download-link"/g) || []).length).toBe(1000);
     expect((html.match(/class="file-view-link"/g) || []).length).toBe(1000);
+    expect((html.match(/class="file-checksum-link"/g) || []).length).toBe(1000);
     expect(html).not.toContain('id="owner-tools"');
     const listing = await (await searchHost.download(new Request(origin + '/files/nested/'), '/files/nested/')).text();
     expect(listing).toContain('Folder listing limits reached; some entries are omitted.');
@@ -390,6 +415,200 @@ test('text files have view links while existing file links still download origin
   expect(html).not.toContain('id="text-viewer"');
   const nested = await (await fetch(origin + '/files/nested/')).text();
   expect(nested).toContain('href="/files/nested/readme.md?view=1"');
+});
+
+test('all files have checksum links in folders and search results without hashing directories', async () => {
+  for (const suffix of ['', '?q=hello', '?q=inside']) {
+    const html = await (await fetch(origin + '/files/' + suffix)).text();
+    expect(html).toContain(suffix === '?q=inside' ? 'href="/files/nested/inside.txt?sha256=1"' : 'href="/files/hello.txt?sha256=1" aria-label="SHA-256 checksum for hello.txt"');
+    expect(html).not.toContain('nested/?sha256=1');
+    expect(html).not.toContain('id="file-checksum"');
+    if (!suffix) expect(html).toContain('.html?sha256=1');
+  }
+});
+
+test('checksum pages show the original byte digest, safe navigation, and text preview links', async () => {
+  const response = await fetch(origin + '/files/nested/readme.md?sha256=1');
+  expect(response.status).toBe(200);
+  expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+  expect(response.headers.get('cache-control')).toBe('no-store');
+  expect(response.headers.get('content-disposition')).toBeNull();
+  expect(response.headers.get('content-security-policy')).toContain("object-src 'none'");
+  const original = await (await fetch(origin + '/files/nested/readme.md')).arrayBuffer();
+  const digest = createHash('sha256').update(new Uint8Array(original)).digest('hex');
+  const html = await response.text();
+  expect(html).toContain(`<code id="checksum-value">${digest}</code>`);
+  expect(html).toContain('id="checksum-back" href="/files/nested/"');
+  expect(html).toContain('id="checksum-download" class="file-download-link" href="/files/nested/readme.md">Download original');
+  expect(html).toContain('id="checksum-view" href="/files/nested/readme.md?view=1"');
+  expect(html).toContain('C:\\files\\nested\\readme.md');
+  for (const id of ['text-viewer', 'owner-tools', 'file-search', 'file-entries']) expect(html).not.toContain(`id="${id}"`);
+  const preview = await (await fetch(origin + '/files/nested/readme.md?view=1')).text();
+  expect(preview).toContain('id="text-checksum" href="/files/nested/readme.md?sha256=1"');
+  expect(preview).not.toContain('id="file-checksum"');
+});
+
+test('checksums support empty, binary, large, and changed files without altering downloads', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    const contents = new Map([
+      ['empty.bin', new Uint8Array()],
+      ['binary.bin', new Uint8Array([0, 1, 2, 0xff, 0xfe])],
+      ['large.bin', Buffer.alloc(10 * 1024 * 1024 + 1, 0xff)],
+      ['空 file #%.txt', Buffer.from('abc')]
+    ]);
+    for (const [name, bytes] of contents) {
+      await writeFile(resolve(path, name), bytes);
+      const url = origin + '/files/' + encodeURIComponent(name);
+      const response = await isolated.download(new Request(url + '?sha256=1'), '/files/' + name);
+      expect(response.status).toBe(200);
+      const html = await response.text();
+      const digest = name === '空 file #%.txt' ? 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad' : createHash('sha256').update(bytes).digest('hex');
+      expect(html).toContain(`<code id="checksum-value">${digest}</code>`);
+      expect(html).toContain(`href="/files/${encodeURIComponent(name)}">Download original`);
+      if (name.endsWith('.bin')) expect(html).not.toContain('id="checksum-preview"');
+      const original = await isolated.download(new Request(url), '/files/' + name);
+      expect(original.headers.get('content-disposition')).toContain('attachment;');
+      expect(new Uint8Array(await original.arrayBuffer())).toEqual(new Uint8Array(bytes));
+    }
+    await writeFile(resolve(path, '空 file #%.txt'), 'different bytes');
+    const changed = await isolated.download(new Request(origin + '/files/' + encodeURIComponent('空 file #%.txt') + '?sha256=1'), '/files/空 file #%.txt');
+    expect(await changed.text()).toContain(createHash('sha256').update('different bytes').digest('hex'));
+  });
+});
+
+test('checksum pages preserve path protections and escape filenames', async () => {
+  for (const name of ['.secret', '%2e%2e%2fprivate.txt', '%00']) {
+    expect((await fetch(origin + '/files/' + name + '?sha256=1')).status).toBe(403);
+  }
+  for (const name of ['outside-link', 'inside-link', 'outside-hardlink', 'outside-directory/private.txt', 'missing']) {
+    expect((await fetch(origin + '/files/' + name + '?sha256=1')).status).toBe(404);
+  }
+  expect((await fetch(origin + '/files/hello.txt?sha256=1', { method: 'DELETE' })).status).toBe(405);
+  const html = await (await fetch(origin + '/files/' + encodeURIComponent('<script>&".html') + '?sha256=1')).text();
+  expect(html).toContain('&lt;script&gt;&amp;');
+  expect(html).not.toContain('<script>');
+  expect(html).not.toContain('id="checksum-preview"');
+});
+
+test('busy checksum work cannot exhaust browsing, preview, or download slots and aborts release capacity', async () => {
+  await isolatedHost({ maxConcurrentPages: 1, maxConcurrentDownloads: 1, maxConcurrentChecksums: 1 }, async (limited, path) => {
+    const file = resolve(path, 'notes.txt');
+    await writeFile(file, 'x'.repeat(128 * 1024));
+    await observeFileReads(file, async (reads, read) => {
+      let enter;
+      let release;
+      const started = new Promise(resolve => { enter = resolve; });
+      const gate = new Promise(resolve => { release = resolve; });
+      reads.mockImplementationOnce(async function (...args) {
+        enter();
+        await gate;
+        return read.apply(this, args);
+      });
+      const controller = new AbortController();
+      const url = origin + '/files/notes.txt?sha256=1';
+      const pending = limited.download(new Request(url, { signal: controller.signal }), '/files/notes.txt');
+      try {
+        await started;
+        const busy = await limited.download(new Request(url), '/files/notes.txt');
+        expect(busy.status).toBe(429);
+        expect(busy.headers.get('retry-after')).toBe('1');
+        await busy.text();
+        const listing = await limited.download(new Request(origin + '/files/'), '/files/');
+        expect(listing.status).toBe(200);
+        expect(await listing.text()).toContain('notes.txt?sha256=1');
+        const preview = await limited.download(new Request(origin + '/files/notes.txt?view=1'), '/files/notes.txt');
+        expect(preview.status).toBe(200);
+        expect(await preview.text()).toContain('id="text-content"');
+        const download = await limited.download(new Request(origin + '/files/notes.txt'), '/files/notes.txt');
+        expect(download.status).toBe(200);
+        expect((await download.text()).length).toBe(128 * 1024);
+        controller.abort();
+        release();
+        expect((await pending).status).toBe(499);
+        reads.mockClear();
+        const retry = await limited.download(new Request(url), '/files/notes.txt');
+        expect(retry.status).toBe(200);
+        await retry.text();
+        expect(reads.mock.calls.length).toBeGreaterThan(0);
+      } finally {
+        release();
+        const response = await pending;
+        if (response.body) await response.body.cancel();
+      }
+    });
+  });
+});
+
+test('cached checksums avoid rereading bytes and invalidate on same-size edits or file replacement', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    const file = resolve(path, 'cached.bin');
+    await writeFile(file, 'abc');
+    const checksum = async () => {
+      const response = await isolated.download(new Request(origin + '/files/cached.bin?sha256=1'), '/files/cached.bin');
+      expect(response.status).toBe(200);
+      return response.text();
+    };
+    await observeFileReads(file, async reads => {
+      expect(await checksum()).toContain(createHash('sha256').update('abc').digest('hex'));
+      expect(reads.mock.calls.length).toBeGreaterThan(0);
+      reads.mockClear();
+      expect(await checksum()).toContain(createHash('sha256').update('abc').digest('hex'));
+      expect(reads).not.toHaveBeenCalled();
+      await writeFile(file, 'xyz');
+      expect(await checksum()).toContain(createHash('sha256').update('xyz').digest('hex'));
+      expect(reads.mock.calls.length).toBeGreaterThan(0);
+      reads.mockClear();
+      await writeFile(resolve(path, 'replacement.bin'), '123');
+      await rename(resolve(path, 'replacement.bin'), file);
+      expect(await checksum()).toContain(createHash('sha256').update('123').digest('hex'));
+      expect(reads.mock.calls.length).toBeGreaterThan(0);
+    });
+  });
+});
+
+test('files changed during hashing return 409 and the inconsistent digest is never cached', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    const file = resolve(path, 'changing.bin');
+    const replacement = Buffer.alloc(128 * 1024, 2);
+    await writeFile(file, Buffer.alloc(replacement.length, 1));
+    await observeFileReads(file, async (reads, read) => {
+      reads.mockImplementationOnce(async function (...args) {
+        const result = await read.apply(this, args);
+        await writeFile(file, replacement);
+        return result;
+      });
+      const request = () => new Request(origin + '/files/changing.bin?sha256=1');
+      const changed = await isolated.download(request(), '/files/changing.bin');
+      expect(changed.status).toBe(409);
+      expect(await changed.text()).not.toContain('checksum-value');
+      reads.mockClear();
+      const retry = await isolated.download(request(), '/files/changing.bin');
+      expect(retry.status).toBe(200);
+      expect(await retry.text()).toContain(createHash('sha256').update(replacement).digest('hex'));
+      expect(reads.mock.calls.length).toBeGreaterThan(0);
+    });
+  });
+});
+
+test('checksum cache evicts older entries after 1000 files while retaining recently used hashes', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    const checksum = async index => {
+      const pathname = `/files/cache-${index}.bin`;
+      const response = await isolated.download(new Request(origin + pathname + '?sha256=1'), pathname);
+      expect(response.status).toBe(200);
+      await response.text();
+    };
+    for (let index = 0; index <= 1000; index++) await writeFile(resolve(path, `cache-${index}.bin`), 'x');
+    for (let index = 0; index < 1000; index++) await checksum(index);
+    await checksum(0);
+    await checksum(1000);
+    await observeFileReads(resolve(path, 'cache-0.bin'), async reads => {
+      await checksum(0);
+      expect(reads).not.toHaveBeenCalled();
+      await checksum(1);
+      expect(reads).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 
 test('the text viewer renders UTF-8 notes with folder navigation and a download link', async () => {
@@ -831,6 +1050,9 @@ test('uploads default to disabled and unsafe configuration fails closed', async 
   }
   await expect(createFileHost(root, '', { uploadToken: 'short' })).rejects.toThrow('at least 32');
   await expect(createFileHost(root, '', { maxUploadBytes: 0 })).rejects.toThrow('positive integer');
+  for (const maxConcurrentChecksums of [0, -1, 1.5, 1025, NaN, '2']) {
+    await expect(createFileHost(root, '', { maxConcurrentChecksums })).rejects.toThrow('Concurrency limits');
+  }
   await expect(createFileHost(resolve(root, 'outside-directory'), '')).rejects.toThrow();
 });
 
