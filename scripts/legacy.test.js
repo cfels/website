@@ -37,19 +37,138 @@ test('legacy setup enables semantic elements and replaces unsupported artwork an
   const elements = [];
   const images = [{ src: 'http://localhost/assets/luckybg_main.webp' }, { src: 'http://localhost/assets/logo.png' }, { src: 'http://localhost/assets/additions/1.webp', className: 'fan-stamp' }];
   const links = [{ href: 'http://localhost/assets/additions/1.webp' }, { href: 'http://localhost/home.html' }];
-  let loaded;
+  const handlers = {};
   runInNewContext(await Bun.file(resolve(root, 'legacy.js')).text(), {
     document: {
       createElement: tag => elements.push(tag),
-      getElementsByTagName: tag => tag === 'img' ? images : links
+      getElementsByTagName: tag => tag === 'img' ? images : links,
+      querySelector: () => null
     },
-    window: { attachEvent: (event, listener) => { expect(event).toBe('onload'); loaded = listener; } }
+    window: { attachEvent: (event, listener) => { handlers[event] = listener; } }
   });
   expect(elements).toContain('main');
   expect(elements).toContain('figure');
-  loaded();
+  handlers.onload();
+  expect(typeof handlers.onresize).toBe('function');
   expect(images.map(image => image.src)).toEqual(['http://localhost/assets/luckybg_main.png', 'http://localhost/assets/logo.png', 'http://localhost/assets/additions/1-stamp.png']);
   expect(links.map(link => link.href)).toEqual(['http://localhost/assets/additions/1.png', 'http://localhost/home.html']);
+});
+
+test('legacy navigation fits its frame on load and resize without losing body classes', async () => {
+  const style = {};
+  const container = { style, get clientWidth() { return parseInt(style.width, 10) - 2; } };
+  const address = { style: {}, offsetLeft: 174 };
+  const star = { offsetWidth: 23 };
+  const body = { className: 'header-document' };
+  const viewport = { clientWidth: 1024 };
+  const handlers = {};
+  let storedWidth = '';
+  let widthWrites = 0;
+  Object.defineProperty(style, 'width', {
+    get: () => storedWidth,
+    set(value) { storedWidth = value; widthWrites++; if (handlers.onresize) handlers.onresize(); }
+  });
+  const selectors = { '.site, .browser-chrome, .footer-strip': container, '.address': address, '.toolbar-star': star };
+  runInNewContext(await Bun.file(resolve(root, 'legacy.js')).text(), {
+    document: {
+      createElement() {},
+      getElementsByTagName: () => [],
+      querySelector: selector => selectors[selector] || null,
+      documentElement: viewport,
+      body
+    },
+    window: { attachEvent: (event, listener) => { handlers[event] = listener; } }
+  });
+  handlers.onload();
+  expect(style.width).toBe('800px');
+  expect(widthWrites).toBe(1);
+  expect(address.style.width).toBe('573px');
+  expect(body.className).toBe('header-document');
+  viewport.clientWidth = 780;
+  handlers.onresize();
+  expect(style.width).toBe('780px');
+  expect(address.style.width).toBe('553px');
+  handlers.onresize();
+  expect(body.className.trim().split(/\s+/)).toEqual(['header-document', 'legacy-narrow']);
+  expect(widthWrites).toBe(2);
+  viewport.clientWidth = 1024;
+  handlers.onresize();
+  expect(body.className.trim()).toBe('header-document');
+});
+
+test('legacy pages fit the available height including padding after vertical resizing', async () => {
+  const container = { style: {}, className: 'site' };
+  const viewport = { clientWidth: 800, clientHeight: 600 };
+  const handlers = {};
+  runInNewContext(await Bun.file(resolve(root, 'legacy.js')).text(), {
+    document: {
+      createElement() {},
+      getElementsByTagName: () => [],
+      querySelector: selector => selector === '.site, .browser-chrome, .footer-strip' ? container : null,
+      documentElement: viewport,
+      body: { className: '' }
+    },
+    window: { attachEvent: (event, listener) => { handlers[event] = listener; } }
+  });
+  handlers.onload();
+  expect(container.style.minHeight).toBe('577px');
+  viewport.clientHeight = 480;
+  handlers.onresize();
+  expect(container.style.minHeight).toBe('457px');
+  viewport.clientHeight = 10;
+  handlers.onresize();
+  expect(container.style.minHeight).toBe('0px');
+});
+
+test('legacy footer buttons fill a single row at desktop and narrow frame widths', async () => {
+  const style = {};
+  const container = { style };
+  const items = Array.from({ length: 7 }, () => ({ style: {}, offsetWidth: 88 }));
+  const strip = { children: items, get clientWidth() { return parseInt(style.width, 10); } };
+  const viewport = { clientWidth: 1024 };
+  const handlers = {};
+  runInNewContext(await Bun.file(resolve(root, 'legacy.js')).text(), {
+    document: {
+      createElement() {},
+      getElementsByTagName: () => [],
+      querySelector: selector => selector === '.site, .browser-chrome, .footer-strip' ? container : selector === '.button-strip' ? strip : null,
+      documentElement: viewport,
+      body: { className: 'footer-document' }
+    },
+    window: { attachEvent: (event, listener) => { handlers[event] = listener; } }
+  });
+  for (const width of [1024, 780]) {
+    viewport.clientWidth = width;
+    handlers.onload();
+    const rowWidth = items.reduce((total, item) => total + item.offsetWidth + parseFloat(item.style.margin.slice(2)) * 2, 18);
+    expect(rowWidth).toBeCloseTo(Math.min(width, 800));
+    expect(items.every(item => parseFloat(item.style.margin.slice(2)) >= 0)).toBe(true);
+  }
+});
+
+test('legacy file search fits the input beside its button and show-all link after resizing', async () => {
+  const container = { style: {}, className: 'site' };
+  const viewport = { clientWidth: 1024, clientHeight: 600 };
+  const input = { style: {} };
+  const controls = { input, button: { offsetWidth: 56 }, a: { offsetWidth: 48 } };
+  const search = { get clientWidth() { return parseInt(container.style.width, 10) - 48; }, querySelector: selector => controls[selector] };
+  const handlers = {};
+  const selectors = { '.site, .browser-chrome, .footer-strip': container, '.file-search': search };
+  runInNewContext(await Bun.file(resolve(root, 'legacy.js')).text(), {
+    document: {
+      createElement() {},
+      getElementsByTagName: () => [],
+      querySelector: selector => selectors[selector] || null,
+      documentElement: viewport,
+      body: { className: '' }
+    },
+    window: { attachEvent: (event, listener) => { handlers[event] = listener; } }
+  });
+  handlers.onload();
+  expect(input.style.width).toBe('636px');
+  viewport.clientWidth = 780;
+  handlers.onresize();
+  expect(input.style.width).toBe('616px');
 });
 
 test('all PNG artwork uses XP-compatible bit depths and the sidebar crop stays short', async () => {
@@ -90,6 +209,8 @@ test('all website font faces have valid self-hosted EOT fallbacks', async () => 
   const legacy = await Bun.file(resolve(root, 'legacy.css')).text();
   for (const source of modern.matchAll(/assets\/fonts\/([^']+)\.woff2/g)) {
     expect(legacy).toContain(`assets/fonts/${source[1]}.eot`);
+  }
+  for (const source of legacy.matchAll(/assets\/fonts\/([^']+)\.eot/g)) {
     const bytes = await Bun.file(resolve(root, 'assets/fonts', source[1] + '.eot')).arrayBuffer();
     const header = new DataView(bytes);
     expect(header.getUint32(0, true)).toBe(bytes.byteLength);

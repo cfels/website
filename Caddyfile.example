@@ -1,22 +1,52 @@
-vacpro.fyi {
-	request_body /api/files/upload {
-		max_size 10GiB
-	}
-	reverse_proxy 127.0.0.1:3000
+
+# root
+http://vacpro.fyi {
+    import access_log
+    import security_headers
+    import rate_limit_strict
+    redir http://moxiu.vacpro.fyi{uri}
 }
 
-http://vacpro.fyi {
-	@ownerAPI path /api/files/*
-	handle @ownerAPI {
-		respond "Owner actions require HTTPS" 403
-	}
+# my website
+http://moxiu.vacpro.fyi {
+    import access_log
+    import security_headers
+    import rate_limit_strict
 
-	@xp header_regexp legacy User-Agent "Windows NT 5[.][12]"
-	handle @xp {
-		reverse_proxy 127.0.0.1:3000
-	}
+    @verifiedHTTPS {
+        remote_ip 10.0.0.1
+        header X-Forwarded-Proto https
+    }
+    header @verifiedHTTPS Strict-Transport-Security "max-age=31536000"
 
-	handle {
-		redir https://vacpro.fyi{uri} 302
-	}
+    @insecureOwner {
+        path /api/files/*
+        not {
+            remote_ip 10.0.0.1
+            header X-Forwarded-Proto https
+        }
+    }
+    respond @insecureOwner "Owner actions require HTTPS" 403
+
+    request_body /api/files/upload {
+        max_size 10GiB
+    }
+
+    @downloads {
+        method GET HEAD
+        path_regexp downloadable ^/files/.+\.[^/]+$
+        not query view=1
+    }
+
+    handle @downloads {
+        reverse_proxy 172.17.0.1:3003 {
+            trusted_proxies 10.0.0.1/32
+        }
+    }
+
+    handle {
+        reverse_proxy 172.17.0.1:3001 {
+            trusted_proxies 10.0.0.1/32
+        }
+    }
 }

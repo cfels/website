@@ -11,6 +11,7 @@ let server;
 let origin;
 const token = 'test-only-owner-token-with-at-least-32-characters';
 const limit = 1024;
+const secureFixture = { isSecureRequest: request => request.headers.get('x-forwarded-proto') !== 'http', minFreeBytes: 0 };
 
 beforeAll(async () => {
   fixture = await mkdtemp(resolve(tmpdir(), 'website-files-'));
@@ -28,7 +29,7 @@ beforeAll(async () => {
   await symlink(fixture, resolve(root, 'outside-directory'));
   await symlink(resolve(root, 'hello.txt'), resolve(root, 'inside-link'));
   await link(resolve(fixture, 'private.txt'), resolve(root, 'outside-hardlink'));
-  host = await createFileHost(root, await Bun.file(resolve(import.meta.dir, '../static/files.html')).text(), { uploadToken: token, maxUploadBytes: limit });
+  host = await createFileHost(root, await Bun.file(resolve(import.meta.dir, '../static/files.html')).text(), { ...secureFixture, uploadToken: token, maxUploadBytes: limit });
   server = Bun.serve({
     hostname: '127.0.0.1',
     port: 0,
@@ -94,6 +95,128 @@ function createFolder(name, folder = '', authorization = `Bearer ${token}`) {
   });
 }
 
+async function isolatedHost(options, action) {
+  const path = await mkdtemp(resolve(tmpdir(), 'website-limits-'));
+  let isolated;
+  try {
+    isolated = await createFileHost(path, await Bun.file(resolve(import.meta.dir, '../static/files.html')).text(), options);
+    await action(isolated, path);
+  } finally {
+    if (isolated) await isolated.close();
+    await rm(path, { recursive: true, force: true });
+  }
+}
+
+function localUpload(name, body, headers = {}) {
+  return new Request(origin + '/api/files/upload', { method: 'POST', body, headers: { Authorization: `Bearer ${token}`, 'X-File-Name': name, ...headers } });
+}
+
+test('owner actions and token fields fail closed without verified transport even with forged headers', async () => {
+  for (const policy of [undefined, () => false, async () => false]) {
+    await isolatedHost({ uploadToken: token, isSecureRequest: policy }, async restricted => {
+      expect((await restricted.upload(localUpload('denied.txt', 'data', { 'X-Forwarded-Proto': 'https' }))).status).toBe(403);
+      const folder = new Request(origin + '/api/files/mkdir', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-File-Name': 'denied', 'X-Forwarded-Proto': 'https' } });
+      expect((await restricted.createFolder(folder)).status).toBe(403);
+      const page = await (await restricted.download(new Request(origin + '/files/', { headers: { 'X-Forwarded-Proto': 'https' } }), '/files/')).text();
+      expect(page).not.toContain('id="owner-tools"');
+      expect(page).not.toContain('id="owner-token"');
+    });
+  }
+});
+
+test('page and download slots remain bounded until bodies finish or are cancelled', async () => {
+  await isolatedHost({ maxConcurrentPages: 1, maxConcurrentDownloads: 1 }, async (limited, path) => {
+    await writeFile(resolve(path, 'notes.txt'), 'x'.repeat(512 * 1024));
+    const page = await limited.download(new Request(origin + '/files/'), '/files/');
+    expect(page.status).toBe(200);
+    const busy = await limited.download(new Request(origin + '/files/'), '/files/');
+    expect(busy.status).toBe(429);
+    expect(busy.headers.get('retry-after')).toBe('1');
+    await page.body.cancel();
+    expect((await limited.download(new Request(origin + '/files/', { method: 'HEAD' }), '/files/')).status).toBe(200);
+    const invalid = await limited.download(new Request(origin + '/files/?q=' + 'x'.repeat(256)), '/files/');
+    expect(invalid.status).toBe(400);
+    await invalid.text();
+    const resumed = await limited.download(new Request(origin + '/files/'), '/files/');
+    expect(resumed.status).toBe(200);
+    await resumed.text();
+    const download = await limited.download(new Request(origin + '/files/notes.txt'), '/files/notes.txt');
+    expect(download.status).toBe(200);
+    expect((await limited.download(new Request(origin + '/files/notes.txt'), '/files/notes.txt')).status).toBe(429);
+    await download.body.cancel();
+    const retry = await limited.download(new Request(origin + '/files/notes.txt'), '/files/notes.txt');
+    expect(await retry.text()).toBe('x'.repeat(512 * 1024));
+    const abortController = new AbortController();
+    const abandoned = await limited.download(new Request(origin + '/files/notes.txt', { signal: abortController.signal }), '/files/notes.txt');
+    expect(abandoned.status).toBe(200);
+    abortController.abort();
+    await abandoned.body.cancel();
+    const recovered = await limited.download(new Request(origin + '/files/notes.txt'), '/files/notes.txt');
+    expect(recovered.status).toBe(200);
+    await recovered.body.cancel();
+  });
+});
+
+test('active uploads are capped and failed uploads release their reservations', async () => {
+  await isolatedHost({ ...secureFixture, uploadToken: token, maxUploadBytes: 8, maxStorageBytes: 8, maxConcurrentUploads: 1 }, async (limited, path) => {
+    let finish;
+    const body = new ReadableStream({ start(controller) { finish = () => { controller.enqueue(new Uint8Array([1, 2])); controller.close(); }; } });
+    const pending = limited.upload(localUpload('first.txt', body));
+    expect((await limited.upload(localUpload('second.txt', 'xx'))).status).toBe(429);
+    finish();
+    expect((await pending).status).toBe(201);
+    const failed = new ReadableStream({ pull(controller) { controller.error(new Error('Interrupted upload')); } });
+    expect((await limited.upload(localUpload('failed.txt', failed, { 'Content-Length': '2' }))).status).toBe(500);
+    expect((await limited.upload(localUpload('mismatch.txt', 'xx', { 'Content-Length': '1' }))).status).toBe(400);
+    expect((await limited.upload(localUpload('retry.txt', 'xxxxxx', { 'Content-Length': '6' }))).status).toBe(201);
+    expect((await readdir(path)).sort()).toEqual(['first.txt', 'retry.txt']);
+  });
+});
+
+test('concurrent storage reservations cannot exceed the total quota', async () => {
+  await isolatedHost({ ...secureFixture, uploadToken: token, maxUploadBytes: 8, maxStorageBytes: 10 }, async (limited, path) => {
+    await writeFile(resolve(path, 'existing.txt'), 'xx');
+    let finish;
+    let entered;
+    const reading = new Promise(resolveRead => { entered = resolveRead; });
+    const body = new ReadableStream({ pull(controller) {
+      entered();
+      return new Promise(resolvePull => { finish = () => { controller.enqueue(new Uint8Array(4)); controller.close(); resolvePull(); }; });
+    } }, { highWaterMark: 0 });
+    const pending = limited.upload(localUpload('first.txt', body, { 'Content-Length': '4' }));
+    await reading;
+    expect((await limited.upload(localUpload('too-much.txt', 'xxxxxx', { 'Content-Length': '6' }))).status).toBe(507);
+    finish();
+    expect((await pending).status).toBe(201);
+    expect((await limited.upload(localUpload('last.txt', 'xxxx', { 'Content-Length': '4' }))).status).toBe(201);
+    expect((await limited.upload(localUpload('full.txt', 'x', { 'Content-Length': '1' }))).status).toBe(507);
+    expect((await readdir(path)).sort()).toEqual(['existing.txt', 'first.txt', 'last.txt']);
+  });
+});
+
+test('a free-space reserve prevents new writes without preventing reads', async () => {
+  await isolatedHost({ ...secureFixture, uploadToken: token, minFreeBytes: Number.MAX_SAFE_INTEGER }, async (limited, path) => {
+    expect((await limited.upload(localUpload('no-space.txt', 'x'))).status).toBe(507);
+    const folder = new Request(origin + '/api/files/mkdir', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-File-Name': 'no-space' } });
+    expect((await limited.createFolder(folder)).status).toBe(507);
+    expect(await readdir(path)).toEqual([]);
+    expect((await limited.download(new Request(origin + '/files/', { method: 'HEAD' }), '/files/')).status).toBe(200);
+  });
+});
+
+test('a tree too deep to account for prevents owner writes while files remain browsable', async () => {
+  await isolatedHost({ ...secureFixture, uploadToken: token }, async (limited, path) => {
+    let nested = path;
+    for (let depth = 0; depth < 65; depth++) {
+      nested = resolve(nested, 'child');
+      await mkdir(nested);
+    }
+    expect((await limited.upload(localUpload('uncounted.txt', 'x'))).status).toBe(503);
+    expect(await Bun.file(resolve(path, 'uncounted.txt')).exists()).toBe(false);
+    expect((await limited.download(new Request(origin + '/files/', { method: 'HEAD' }), '/files/')).status).toBe(200);
+  });
+});
+
 test('lists folders and files, escapes names, and excludes hidden entries and links', async () => {
   const response = await fetch(origin + '/files/');
   expect(response.status).toBe(200);
@@ -117,7 +240,7 @@ test('lists folders and files, escapes names, and excludes hidden entries and li
   expect(nested).toContain('href="/files/nested/">Refresh');
 });
 
-test('search filters names in the current folder without changing download URLs', async () => {
+test('search matches file and folder names without changing download URLs', async () => {
   const response = await fetch(origin + '/files/?q=HELLO');
   expect(response.status).toBe(200);
   const html = await response.text();
@@ -133,26 +256,56 @@ test('search filters names in the current folder without changing download URLs'
   expect(unicode).toContain('1 match for “空”');
 });
 
-test('nested search stays in its folder and supports clearing or empty results', async () => {
+test('search covers all folders from both root and nested pages and supports clearing or empty results', async () => {
   const root = await (await fetch(origin + '/files/?q=inside')).text();
-  expect(root).toContain('No matching files or folders.');
+  expect(root).toContain('href="/files/nested/inside.txt"');
+  expect(root).toContain('>nested\\inside.txt</a>');
+  expect(root).toContain('1 match for “inside” across all folders.');
   const nested = await (await fetch(origin + '/files/nested/?q=INSIDE')).text();
   expect(nested).toContain('href="/files/nested/inside.txt"');
-  expect(nested).toContain('action="/files/nested/"');
+  expect(nested).toContain('action="/files/"');
   expect(nested).toContain('id="search-clear" href="/files/nested/"');
   expect(nested).toContain('href="/files/">..\\');
+  const outsideCurrentFolder = await (await fetch(origin + '/files/nested/?q=HELLO')).text();
+  expect(outsideCurrentFolder).toContain('href="/files/hello.txt"');
   const noMatches = await (await fetch(origin + '/files/nested/?q=missing')).text();
   expect(noMatches).toContain('No matching files or folders.');
   expect(noMatches).toContain('0 matches for “missing”');
   const cleared = await (await fetch(origin + '/files/?q=%20%20')).text();
   expect(cleared).toContain('href="/files/hello.txt"');
   expect(cleared).toContain('href="/files/nested/"');
+  expect(cleared).not.toContain('href="/files/nested/inside.txt"');
+});
+
+test('recursive search distinguishes duplicate names and safely renders nested paths and preview links', async () => {
+  const folder = '<notes>&"#%';
+  await mkdir(resolve(root, 'nested', folder));
+  await writeFile(resolve(root, 'nested', folder, 'hello.txt'), 'nested hello');
+  const html = await (await fetch(origin + '/files/?q=hello')).text();
+  expect(html).toContain('2 matches for “hello”');
+  expect(html).toContain('>hello.txt</a>');
+  expect(html).toContain('>nested\\&lt;notes&gt;&amp;&quot;#%\\hello.txt</a>');
+  const url = '/files/nested/' + encodeURIComponent(folder) + '/hello.txt';
+  expect(html).toContain(`href="${url}"`);
+  expect(html).toContain(`href="${url}?view=1" aria-label="View nested\\&lt;notes&gt;&amp;&quot;#%\\hello.txt"`);
+  expect(html).not.toContain('<notes>');
+  expect(await (await fetch(origin + url)).text()).toBe('nested hello');
+  const directorySearch = await (await fetch(origin + '/files/?q=' + encodeURIComponent(folder))).text();
+  expect(directorySearch).toContain(`href="/files/nested/${encodeURIComponent(folder)}/"`);
 });
 
 test('search preserves hidden-file restrictions and safely renders untrusted query text', async () => {
+  await mkdir(resolve(root, 'nested', '.hidden-folder'));
+  await writeFile(resolve(root, 'nested', '.hidden-folder', 'secret.txt'), 'hidden nested secret');
+  await writeFile(resolve(root, 'nested', '.secret'), 'hidden secret');
+  await symlink(fixture, resolve(root, 'nested', 'secret-directory'));
+  await symlink(root, resolve(root, 'nested', 'secret-loop'));
+  await symlink(resolve(fixture, 'private.txt'), resolve(root, 'nested', 'secret-link.txt'));
+  await link(resolve(fixture, 'private.txt'), resolve(root, 'nested', 'secret-hardlink.txt'));
   const privateSearch = await (await fetch(origin + '/files/?q=secret')).text();
   expect(privateSearch).toContain('No matching files or folders.');
   for (const name of ['.secret', 'outside secret']) expect(privateSearch).not.toContain(name);
+  for (const name of ['.hidden-folder', 'secret-directory', 'secret-loop', 'secret-link.txt', 'secret-hardlink.txt']) expect(privateSearch).not.toContain(name);
   const linkSearch = await (await fetch(origin + '/files/?q=outside')).text();
   expect(linkSearch).toContain('No matching files or folders.');
   const query = '<script>alert(1)</script>" onfocus="evil &amp;';
@@ -164,6 +317,33 @@ test('search preserves hidden-file restrictions and safely renders untrusted que
   } }).transform(new Response(html)).text();
   expect(injectedAttribute).toBe(false);
   expect((await fetch(origin + '/files/?q=' + 'x'.repeat(256))).status).toBe(400);
+});
+
+test('recursive search caps rendered matches and reports incomplete results', async () => {
+  const searchFixture = await mkdtemp(resolve(tmpdir(), 'website-search-'));
+  let searchHost;
+  try {
+    await mkdir(resolve(searchFixture, 'nested'));
+    for (let start = 0; start < 1001; start += 100) {
+      const end = Math.min(start + 100, 1001);
+      await Promise.all(Array.from({ length: end - start }, (_, index) => writeFile(resolve(searchFixture, 'nested', `match-${start + index}.txt`), '')));
+    }
+    searchHost = await createFileHost(searchFixture, await Bun.file(resolve(import.meta.dir, '../static/files.html')).text());
+    const response = await searchHost.download(new Request(origin + '/files/?q=match'), '/files/');
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('1000 matches for “match” across all folders.');
+    expect(html).toContain('Search limits reached; these results may be incomplete.');
+    expect((html.match(/class="file-download-link"/g) || []).length).toBe(1000);
+    expect((html.match(/class="file-view-link"/g) || []).length).toBe(1000);
+    expect(html).not.toContain('id="owner-tools"');
+    const listing = await (await searchHost.download(new Request(origin + '/files/nested/'), '/files/nested/')).text();
+    expect(listing).toContain('Folder listing limits reached; some entries are omitted.');
+    expect((listing.match(/class="file-download-link"/g) || []).length).toBe(1000);
+  } finally {
+    if (searchHost) await searchHost.close();
+    await rm(searchFixture, { recursive: true, force: true });
+  }
 });
 
 test('downloads stream original bytes with attachment headers and support HEAD', async () => {
@@ -341,12 +521,17 @@ test('deep folders show an unavailable size instead of a partial total and remai
   const row = html.match(/<tr>[\s\S]*?<\/tr>/g).find(row => row.includes('href="/files/deep-folder/"'));
   expect(row).toContain('>—</td>');
   expect(html).toContain('A dash means its size is unavailable; open the folder to browse its contents.');
+  expect(html).toContain('Search limits reached; these results may be incomplete.');
+  const deepSearch = await (await fetch(origin + '/files/?q=notes.txt')).text();
+  expect(deepSearch).toContain('Search limits reached; these results may be incomplete.');
+  expect(deepSearch).not.toContain('>deep-folder\\');
   expect((await fetch(origin + '/files/deep-folder/child/')).status).toBe(200);
   const head = await fetch(origin + '/files/deep-folder/', { method: 'HEAD' });
   expect(head.status).toBe(200);
   expect(head.headers.get('content-type')).toBe('text/html; charset=utf-8');
   expect(await head.text()).toBe('');
   expect((await fetch(origin + '/files/deep-folder/?q=' + 'x'.repeat(256), { method: 'HEAD' })).status).toBe(400);
+  await rm(resolve(root, 'deep-folder'), { recursive: true });
 });
 
 test('folder-size counting is bounded even when a folder contains many hidden entries', async () => {
@@ -367,6 +552,11 @@ test('folder-size counting is bounded even when a folder contains many hidden en
     expect(html).toContain('>—</td>');
     expect(html).not.toContain('.hidden-');
     expect(html).not.toContain('>0 B</td>');
+    const search = await countHost.download(new Request(origin + '/files/?q=missing'), '/files/');
+    expect(search.status).toBe(200);
+    const searchHTML = await search.text();
+    expect(searchHTML).toContain('Search limits reached; these results may be incomplete.');
+    expect(searchHTML).not.toContain('.hidden-');
   } finally {
     if (countHost) await countHost.close();
     await rm(countFixture, { recursive: true, force: true });
@@ -396,7 +586,7 @@ test('the token field supports password autofill without putting credentials in 
   expect(tokenForm).toEqual({ method: 'post', action: '/api/files/upload', autocomplete: 'on' });
   expect(tokenField).toEqual({ name: 'password', type: 'password', autocomplete: 'current-password', value: null });
   expect(usernameField).toEqual({ type: 'hidden', autocomplete: 'username', value: 'owner' });
-  expect(ownerExpanded).toBe(true);
+  expect(ownerExpanded).toBe(false);
   expect(tokenSubmit).toBe(true);
   expect(html).not.toContain(token);
   const response = await fetch(origin + '/api/files/upload', {
@@ -541,7 +731,7 @@ test('forwarded HTTP pages omit owner credentials and actions while keeping down
 });
 
 test('the default accepts upload sizes above 4 GiB and rejects declarations over 10 GiB', async () => {
-  const defaultHost = await createFileHost(root, await Bun.file(resolve(import.meta.dir, '../static/files.html')).text(), { uploadToken: token });
+  const defaultHost = await createFileHost(root, await Bun.file(resolve(import.meta.dir, '../static/files.html')).text(), { ...secureFixture, uploadToken: token });
   try {
     const page = await (await defaultHost.download(new Request(origin + '/files/'), '/files/')).text();
     expect(page).toContain('10.0 GiB');
@@ -632,12 +822,18 @@ test('replacing the files path with a symlink cannot redirect reads or writes', 
   const pinnedPath = resolve(fixture, 'pinned');
   await mkdir(pinnedPath);
   await writeFile(resolve(pinnedPath, 'original.txt'), 'pinned original');
-  const pinned = await createFileHost(pinnedPath, '', { uploadToken: token });
+  const pinned = await createFileHost(pinnedPath, await Bun.file(resolve(import.meta.dir, '../static/files.html')).text(), { ...secureFixture, uploadToken: token });
   try {
     await rename(pinnedPath, resolve(fixture, 'original-directory'));
     await symlink(fixture, pinnedPath);
     expect(await (await pinned.download(new Request(origin + '/files/original.txt'), '/files/original.txt')).text()).toBe('pinned original');
     expect((await pinned.download(new Request(origin + '/files/private.txt'), '/files/private.txt')).status).toBe(404);
+    const search = await (await pinned.download(new Request(origin + '/files/?q=original'), '/files/')).text();
+    expect(search).toContain('href="/files/original.txt"');
+    expect(search).toContain('1 match for “original” across all folders.');
+    const outsideSearch = await (await pinned.download(new Request(origin + '/files/?q=private'), '/files/')).text();
+    expect(outsideSearch).toContain('No matching files or folders.');
+    expect(outsideSearch).not.toContain('private.txt');
     expect((await pinned.upload(new Request(origin + '/api/files/upload', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'X-File-Name': 'pinned-upload.txt' },

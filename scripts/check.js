@@ -40,7 +40,7 @@ for (const target of frameTargets) {
 const index = await Bun.file(resolve(root, 'index.html')).text();
 if (!index.includes('<frameset ') || !index.includes('HTML 4.01 Frameset')) errors.push('Missing legacy frameset');
 
-for (const script of ['../server.js', '../file-host.js', 'files.js', 'frames.js', 'header.js', 'legacy.js', 'service-worker.js', '../scripts/build.js', '../scripts/check.js']) {
+for (const script of ['../server.js', '../file-host.js', '../request-policy.js', 'files.js', 'frames.js', 'header.js', 'legacy.js', 'service-worker.js', '../scripts/build.js', '../scripts/check.js']) {
   try {
     new Bun.Transpiler({ loader: 'js' }).scan(await Bun.file(resolve(root, script)).text());
   } catch (error) {

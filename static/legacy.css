@@ -4,52 +4,88 @@
 @font-face { font-family: Tahoma; src: url('assets/fonts/tahoma.eot'); font-weight: 400; }
 @font-face { font-family: 'Moxiu Japanese'; src: url('assets/fonts/japanese.eot'); font-weight: 400; }
 @font-face { font-family: 'Moxiu Japanese'; src: url('assets/fonts/japanese-bold.eot'); font-weight: 700; }
+@font-face { font-family: 'Moxiu Toolbar'; src: url('assets/fonts/toolbar.eot'); font-weight: 400; }
 main, header, footer, nav, section, article, aside, figure, figcaption, details, summary { display: block; }
 [hidden], #owner-tools { display: none; }
+a, a:visited { color: #7628a2; }
+a:hover { color: #ee3685; }
 a:focus, button:focus, input:focus, .text-file-content:focus { outline: 2px dotted #000; }
+.site, .browser-chrome, .footer-strip { max-width: none; }
 .site { min-height: 100%; }
 .titlebar { position: relative; display: block; background: #ef83b3 url('assets/titlebar.png') repeat-y; padding-right: 56px; }
 .titlebar > span { vertical-align: middle; }
 .window-controls { position: absolute; top: 2px; right: 3px; }
 .menubar { display: block; background: #ededed url('assets/chrome-stripe.png') repeat; }
 .menubar a { display: inline-block; margin-right: 13px; }
-.toolbar { display: block; background: #ededed url('assets/chrome-stripe.png') repeat; white-space: nowrap; }
-.toolbar button, .tool-home { display: inline-block; vertical-align: middle; margin-right: 5px; background: #ef83b3; text-align: center; }
-.toolbar button[data-reload] { font-size: 0; background: #ef83b3 url('assets/reload.png') center center no-repeat; }
+.menubar a, .menubar a:visited { color: #656565; }
+.menubar a:hover { color: #b31b61; }
+.toolbar { display: block; padding-top: 5px; padding-bottom: 5px; background: #ededed url('assets/chrome-stripe.png') repeat; white-space: nowrap; font-size: 0; }
+.toolbar button, .tool-home { display: inline-block; vertical-align: middle; margin-right: 5px; background: #ef83b3; text-align: center; font-size: 0; line-height: 21px; filter: progid:DXImageTransform.Microsoft.Gradient(StartColorStr='#fffbb5d5', EndColorStr='#ffed5596', GradientType=0); }
+.toolbar button:hover, .tool-home:hover { filter: none; }
+.toolbar button[data-reload] { font: 22px/21px 'Moxiu Toolbar'; }
 .arrow { display: inline-block; vertical-align: middle; }
 .arrow:before { position: absolute; left: -3px; top: -3px; content: ''; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-right: 6px solid white; }
 .arrow.right { transform: none; }
 .arrow.right:before { left: 9px; border-right: 0; border-left: 6px solid white; }
-.house { display: inline-block; }
+.house { display: inline-block; vertical-align: middle; }
 .house:before { content: ''; position: absolute; top: 2px; left: 3px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 7px solid white; }
-.address { display: inline-block; width: 510px; vertical-align: middle; }
-.graphic-menu { display: block; overflow: hidden; }
+.address-label { display: inline-block; vertical-align: middle; margin-right: 5px; font-size: 10px; }
+.toolbar-star { display: inline-block; vertical-align: middle; line-height: 23px; }
+.address { display: inline-block; vertical-align: middle; margin-right: 5px; font-size: 10px; }
+.address, .address:visited { color: #7628a2; }
+.address:hover { color: #ee3685; }
+.graphic-menu { position: relative; display: block; overflow: hidden; }
 .graphic-menu a { float: left; width: 108px; height: 23px; margin-right: 5px; }
 .graphic-menu img { display: block; width: 108px; height: 23px; }
-.menu-greeting { display: none; }
-.masthead { position: relative; display: block; background: #e6e6e6 url('assets/masthead.png') repeat-x; }
-.mini-banner { position: absolute; top: 7px; right: 12px; display: block; }
+.menu-greeting { position: absolute; display: block; top: 8px; right: 9px; }
+.masthead { position: relative; display: block; box-sizing: content-box; min-height: 65px; padding-top: 8px; padding-bottom: 2px; background: #e6e6e6 url('assets/masthead.png') repeat-x; }
+.masthead h1 { position: relative; z-index: 0; }
+.legacy-text-shadow { position: absolute; z-index: -1; top: 2px; left: 2px; color: #fff; white-space: nowrap; }
+.vertical-logo { display: none; }
+/* IE8's native PNG rendering loses transparency when a shadow filter is applied. */
+.legacy-vertical-logo { position: absolute; top: 10px; right: 10px; width: 42px; height: 183px; filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/assets/logo.png', sizingMethod='scale') progid:DXImageTransform.Microsoft.DropShadow(Color='#ffffff', OffX=1, OffY=1, Positive=true); }
+.mini-banner { position: absolute; top: 7px; right: 12px; display: block; box-sizing: content-box; width: 207px; min-height: 50px; }
 .mini-banner > a { float: left; margin-right: 5px; }
-.mini-banner span { display: block; padding-top: 7px; }
+.mini-banner span { display: block; padding-top: 9px; }
+.section-bar { box-sizing: content-box; min-height: 17px; }
+.welcome { box-sizing: content-box; min-height: 191px; }
+.welcome-body { box-sizing: content-box; min-height: 157px; }
+.page-heading { box-sizing: content-box; min-height: 72px; }
 .home-columns, .page-columns { display: table; width: 100%; table-layout: fixed; }
 .home-columns > div { display: table-cell; width: 450px; vertical-align: top; }
 .home-columns > aside { display: table-cell; padding-left: 12px; vertical-align: top; }
 .page-columns > article { display: table-cell; vertical-align: top; }
-.page-columns > aside { display: table-cell; width: 181px; border-left: 16px solid #fff2be; vertical-align: top; }
+.page-columns > aside { display: table-cell; width: 197px; border-left: 16px solid #fff2be; vertical-align: top; }
 .wallpaper { width: auto; height: 100%; }
 .profile-snippet { display: block; overflow: hidden; }
+.profile-snippet img { box-sizing: content-box; width: 75px; }
 .profile-snippet > a { float: left; margin-right: 10px; }
 .profile-snippet p { margin-left: 87px; }
+.news-body dd, .mini-links, .home-links p { word-spacing: -1px; }
 .fan-stamp { width: 100%; height: 83px; }
 .gallery { display: block; overflow: hidden; }
 .gallery figure { float: left; width: 24%; height: 224px; margin: 0 1% 9px 0; }
 .gallery figure a { display: block; height: 188px; line-height: 188px; }
 .gallery figure img { width: auto; height: auto; max-width: 100%; max-height: 188px; }
-.button-strip { display: block; text-align: center; }
-.button-strip > img, .button-strip a { display: inline-block; margin: 0 9px; }
-.footer-status { background: #ededed url('assets/chrome-stripe.png') repeat; }
+.button-strip { display: block; box-sizing: content-box; min-height: 32px; text-align: center; font-size: 0; }
+.button-strip > img, .button-strip a { display: inline-block; }
+.footer-status { box-sizing: content-box; min-height: 11px; line-height: 11px; background: #ededed url('assets/chrome-stripe.png') repeat; }
+.footer-status a, .footer-status a:visited { color: #84627d; }
+.legacy-narrow .menu-greeting { display: none; }
+.legacy-narrow .masthead h1 { font-size: 23px; }
+.legacy-narrow .masthead { min-height: 62px; padding-top: 11px; }
+.legacy-narrow .mini-banner { width: 166px; }
+.legacy-narrow .mini-banner img { width: 50px; }
+.legacy-narrow .mini-banner span { padding-top: 1px; }
+.legacy-narrow .featured-character { width: 124px; }
+.legacy-narrow .welcome-body { padding-right: 122px; }
+.legacy-narrow .page-columns > aside { width: 165px; border-left-width: 10px; }
 .file-search-controls, .text-file-actions { display: block; }
-.file-search input { width: 78%; margin-right: 6px; }
+.file-search-controls { font-size: 0; }
+.file-search-controls input, .file-search-controls button, .file-search-controls a { vertical-align: middle; }
+.file-search-controls button { margin-right: 6px; }
+.file-search-controls a { display: inline-block; font-size: 11px; }
+.file-search input { margin-right: 6px; }
 .file-search-results, .file-list td:first-child, .text-file-content, .hardware-list li, .address-book a, .address-book span, .coin code, .link-button code { word-wrap: break-word; }
 .file-list th:first-child + th { width: 80px; }
 .file-list th:first-child + th + th { width: 116px; }

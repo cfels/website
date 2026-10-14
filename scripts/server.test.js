@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import { spawn } from 'node:child_process';
 import { createConnection } from 'node:net';
 import { runInNewContext } from 'node:vm';
-import { copyFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 
 let server;
@@ -154,13 +154,87 @@ test('unsupported mutations are rejected and security headers allow same-origin 
   expect(page.headers.get('content-security-policy')).toContain("frame-src 'self'");
 });
 
+test('static serving denies hidden files and symlinks outside its public directory', async () => {
+  const fixture = await mkdtemp(resolve(tmpdir(), 'website-static-boundary-'));
+  let fixtureServer;
+  try {
+    await mkdir(resolve(fixture, 'files'));
+    await mkdir(resolve(fixture, 'build/assets'), { recursive: true });
+    for (const file of ['server.js', 'file-host.js', 'request-policy.js', 'build/index.html', 'build/files.html', 'build/404.html']) {
+      await copyFile(resolve(import.meta.dir, '..', file), resolve(fixture, file));
+    }
+    await writeFile(resolve(fixture, 'build/.env'), 'test-only hidden configuration');
+    await writeFile(resolve(fixture, 'build/assets/.private.txt'), 'test-only private asset');
+    await writeFile(resolve(fixture, 'private.txt'), 'test-only outside data');
+    await symlink(resolve(fixture, 'private.txt'), resolve(fixture, 'build/assets/linked.txt'));
+    await symlink(resolve(fixture, 'build/assets/.private.txt'), resolve(fixture, 'build/assets/hidden-link.txt'));
+    await symlink(fixture, resolve(fixture, 'build/assets/outside'));
+    await writeFile(resolve(fixture, 'build/assets/public.txt'), 'public test asset');
+    await symlink(resolve(fixture, 'build/assets/public.txt'), resolve(fixture, 'build/assets/public-link.txt'));
+    const testToken = 'test-only-proxy-auth-token-at-least-32-characters';
+    const environment = { ...process.env, HOST: '127.0.0.1', PORT: '0', FILES_UPLOAD_TOKEN: testToken, TRUSTED_PROXY_IPS: '127.0.0.1' };
+    delete environment.FILES_DOWNLOAD_PORT;
+    delete environment.FILES_MAX_UPLOAD_MB;
+    fixtureServer = spawn(process.execPath, [resolve(fixture, 'server.js')], { env: environment, stdio: ['ignore', 'pipe', 'pipe'] });
+    const fixtureOrigin = await new Promise((resolveOrigin, reject) => {
+      let output = '';
+      fixtureServer.stdout.on('data', chunk => {
+        output += chunk;
+        const match = output.match(/Local: (http:\/\/localhost:\d+)/);
+        if (match) resolveOrigin(match[1]);
+      });
+      fixtureServer.on('error', reject);
+      fixtureServer.on('exit', code => reject(new Error(`Server exited before listening: ${code}`)));
+    });
+    for (const path of ['/.env', '/%2eenv', '/assets/.private.txt', '/assets/linked.txt', '/assets/hidden-link.txt', '/assets/outside/private.txt']) {
+      const response = await fetch(fixtureOrigin + path);
+      expect(response.status).toBe(403);
+      expect(await response.text()).not.toContain('test-only');
+      expect((await fetch(fixtureOrigin + path, { method: 'HEAD' })).status).toBe(403);
+    }
+    const publicAsset = await fetch(fixtureOrigin + '/assets/public-link.txt');
+    expect(publicAsset.status).toBe(200);
+    expect(await publicAsset.text()).toBe('public test asset');
+    const requestHeaders = { Authorization: `Bearer ${testToken}`, 'X-File-Name': 'secure-folder' };
+    expect((await fetch(fixtureOrigin + '/api/files/mkdir', { method: 'POST', headers: requestHeaders })).status).toBe(403);
+    const insecurePage = await (await fetch(fixtureOrigin + '/files/')).text();
+    expect(insecurePage).not.toContain('id="owner-tools"');
+    const securePage = await fetch(fixtureOrigin + '/files/', { headers: { 'X-Forwarded-Proto': 'https' } });
+    expect(securePage.headers.get('strict-transport-security')).toBe('max-age=31536000');
+    expect(await securePage.text()).toContain('id="owner-tools"');
+    expect((await fetch(fixtureOrigin + '/api/files/mkdir', { method: 'POST', headers: { ...requestHeaders, 'X-Forwarded-Proto': 'https' } })).status).toBe(201);
+    const untrustedStatus = await new Promise((resolveStatus, reject) => {
+      const url = new URL(fixtureOrigin);
+      const socket = createConnection({ host: '127.0.0.1', port: Number(url.port), localAddress: '127.0.0.2' });
+      socket.setTimeout(3000, () => { socket.destroy(); reject(new Error('Untrusted peer response timed out')); });
+      socket.on('error', reject);
+      socket.on('connect', () => socket.write(`POST /api/files/mkdir HTTP/1.1\r\nHost: ${url.host}\r\nAuthorization: Bearer ${testToken}\r\nX-File-Name: untrusted\r\nX-Forwarded-Proto: https\r\nContent-Length: 0\r\nConnection: close\r\n\r\n`));
+      let output = '';
+      socket.on('data', chunk => {
+        output += chunk;
+        const match = output.match(/^HTTP\/1\.1 (\d+)/);
+        if (match) { socket.destroy(); resolveStatus(Number(match[1])); }
+      });
+    });
+    expect(untrustedStatus).toBe(403);
+    expect(await Bun.file(resolve(fixture, 'files/untrusted')).exists()).toBe(false);
+  } finally {
+    if (fixtureServer && fixtureServer.exitCode === null) {
+      const stopped = once(fixtureServer, 'exit');
+      fixtureServer.kill();
+      await stopped;
+    }
+    await rm(fixture, { recursive: true, force: true });
+  }
+});
+
 test('production errors do not expose source code even when NODE_ENV enables development', async () => {
   const fixture = await mkdtemp(resolve(tmpdir(), 'website-production-error-'));
   let fixtureServer;
   try {
     await mkdir(resolve(fixture, 'files'));
     await mkdir(resolve(fixture, 'build'));
-    for (const file of ['server.js', 'file-host.js', 'build/index.html', 'build/files.html']) {
+    for (const file of ['server.js', 'file-host.js', 'request-policy.js', 'build/index.html', 'build/files.html']) {
       await copyFile(resolve(import.meta.dir, '..', file), resolve(fixture, file));
     }
     const environment = { ...process.env, NODE_ENV: 'development', HOST: '127.0.0.1', PORT: '0', FILES_UPLOAD_TOKEN: '' };
