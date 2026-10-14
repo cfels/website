@@ -376,9 +376,11 @@ export async function createFileHost(rootPath, template, {
       }
       if (pathname.endsWith('/')) return failure('Not found', 404);
       if (new URL(request.url).searchParams.get('view') === '1') return await boundedResponse(pageSlots, request, () => textFilePage(request, handle, stat, parts));
+      const name = parts.at(-1);
+      const fallbackName = name.replace(/[^\x20-\x7e]|["%:<>?*|]/g, '_');
       const headers = {
         'Content-Type': 'application/octet-stream',
-        'Content-Disposition': `attachment; filename="download"; filename*=UTF-8''${encodeName(parts.at(-1))}`,
+        'Content-Disposition': `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodeName(name)}`,
         'Cache-Control': 'no-store',
         'X-Content-Type-Options': 'nosniff',
         'Content-Security-Policy': "sandbox; default-src 'none'; frame-ancestors 'none'",

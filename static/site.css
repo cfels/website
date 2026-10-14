@@ -35,9 +35,9 @@
   font-display: swap;
 }
 * { box-sizing: border-box; }
-html { background: #fff; }
+html { background: #fff; color-scheme: only light; }
 body { margin: 0; color: #333; font: 11px/1.5 Verdana, 'Moxiu Japanese', Arial, sans-serif; }
-a { color: #0000bb; text-decoration: underline; }
+a { color: #7628a2; text-decoration: underline; }
 a:visited { color: #7628a2; }
 a:hover { color: #ee3685; }
 a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px dotted #000; outline-offset: 2px; }
@@ -213,12 +213,12 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 }
 @media (max-width: 600px) {
   body { font-size: 12px; }
-  .browser-chrome { height: 145px; }
+  .browser-chrome { height: 137px; }
   .titlebar { height: 23px; font-size: 11px; }
   .menubar { height: 21px; gap: 12px; font-size: 10px; }
   .toolbar { height: 35px; padding-left: 8px; }
   .address-label, .toolbar-star { display: none; }
-  .graphic-menu { height: 66px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px 7px; padding: 5px 8px; }
+  .graphic-menu { height: 58px; display: grid; grid-template-columns: repeat(3, minmax(0, 108px)); justify-content: center; gap: 4px 5px; padding: 3px 4px; }
   .graphic-menu a { height: 23px; }
   .graphic-menu img { width: 108px; max-width: 100%; }
   .site { border-width: 5px; padding: 6px 7px 13px; }
@@ -252,9 +252,12 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
   .sidebar p { font-size: 12px; }
   .gallery { grid-template-columns: repeat(2, 1fr); gap: 7px; }
   .gallery figure img { height: 170px; }
-  .button-strip { display: grid; grid-template-columns: repeat(3, 88px); justify-content: space-evenly; min-height: 69px; gap: 3px; padding: 2px; }
+  .button-strip { display: grid; grid-template-columns: repeat(4, 88px); justify-content: center; min-height: 66px; gap: 2px; padding: 1px; }
   .footer-status { min-height: 20px; padding: 2px 3px; font-size: 8px; }
   .bottom-links { font-size: 12px; }
+}
+@media (max-width: 359px) {
+  .button-strip { grid-template-columns: repeat(3, 88px); }
 }
 @media (max-width: 350px) {
   .masthead h1 { font-size: 21px; }

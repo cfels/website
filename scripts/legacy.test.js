@@ -10,12 +10,17 @@ test('IE8 initializes desktop frames without matchMedia and older media listener
   const frameset = {};
   runInNewContext(script, { document: { querySelector: () => frameset }, window: {} });
   expect(frameset.rows).toBe('105,*,58');
-  let changed;
-  const media = { matches: true, addListener: listener => { changed = listener; } };
-  runInNewContext(script, { document: { querySelector: () => frameset }, window: { matchMedia: () => media } });
-  expect(frameset.rows).toBe('145,*,124');
-  media.matches = false;
-  changed();
+  const listeners = [];
+  const narrow = { matches: true, addListener: listener => listeners.push(listener) };
+  const compact = { matches: false, addListener: listener => listeners.push(listener) };
+  runInNewContext(script, { document: { querySelector: () => frameset }, window: { matchMedia: query => query.includes('359px') ? compact : narrow } });
+  expect(frameset.rows).toBe('137,*,87');
+  expect(listeners).toHaveLength(2);
+  compact.matches = true;
+  listeners[1]();
+  expect(frameset.rows).toBe('137,*,120');
+  narrow.matches = false;
+  listeners[0]();
   expect(frameset.rows).toBe('105,*,58');
 });
 

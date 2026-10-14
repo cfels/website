@@ -350,18 +350,34 @@ test('downloads stream original bytes with attachment headers and support HEAD',
   const response = await fetch(origin + '/files/hello.txt');
   expect(response.status).toBe(200);
   expect(await response.text()).toBe('hello ☆');
-  expect(response.headers.get('content-disposition')).toContain("filename*=UTF-8''hello.txt");
+  expect(response.headers.get('content-disposition')).toBe("attachment; filename=\"hello.txt\"; filename*=UTF-8''hello.txt");
   expect(response.headers.get('content-type')).toBe('application/octet-stream');
   expect(response.headers.get('content-security-policy')).toContain('sandbox');
   const head = await fetch(origin + '/files/hello.txt', { method: 'HEAD' });
   expect(head.status).toBe(200);
   expect(head.headers.get('content-length')).toBe(String(Buffer.byteLength('hello ☆')));
+  expect(head.headers.get('content-disposition')).toBe(response.headers.get('content-disposition'));
   expect(await head.text()).toBe('');
   const unicode = await fetch(origin + '/files/' + encodeURIComponent('空 file #%.txt'));
+  expect(unicode.headers.get('content-disposition')).toBe("attachment; filename=\"_ file #_.txt\"; filename*=UTF-8''%E7%A9%BA%20file%20%23%25.txt");
   expect(await unicode.text()).toBe('unicode file');
   const redirect = await fetch(origin + '/files/nested', { redirect: 'manual' });
   expect(redirect.status).toBe(308);
   expect(redirect.headers.get('location')).toBe('/files/nested/');
+});
+
+test('legacy download filenames keep spaces and extensions without malformed header parameters', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    for (const name of ['driver setup.exe', 'archive.zip', '<script>&".html']) {
+      await writeFile(resolve(path, name), 'download bytes');
+      const request = new Request(origin + '/files/' + encodeURIComponent(name), { headers: { 'User-Agent': 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1)' } });
+      const response = await isolated.download(request, '/files/' + name);
+      expect(response.status).toBe(200);
+      const fallback = name === '<script>&".html' ? '_script_&_.html' : name;
+      expect(response.headers.get('content-disposition')).toStartWith(`attachment; filename="${fallback}"; filename*=UTF-8''`);
+      expect(await response.text()).toBe('download bytes');
+    }
+  });
 });
 
 test('text files have view links while existing file links still download originals', async () => {
