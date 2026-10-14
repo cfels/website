@@ -37,10 +37,12 @@
         <thead><tr><th scope="col">Name</th><th scope="col">Size</th><th scope="col">Updated (UTC)</th></tr></thead>
         <tbody id="file-entries"><tr><td colspan="3">Visit <a href="/files/">the file stash</a> to browse downloads.</td></tr></tbody>
       </table>
-      <section id="text-viewer" aria-label="Text file viewer" hidden>
-        <p class="text-file-actions"><a id="text-back" href="/files/">« Back to folder</a> · <a id="text-download" href="/files/">Download</a> · <a id="text-checksum" href="/files/">SHA-256</a></p>
-        <p id="text-message" role="status" hidden></p>
+      <section id="file-viewer" aria-label="File viewer" hidden>
+        <p class="text-file-actions"><a id="view-back" href="/files/">« Back to folder</a> · <a id="view-download" href="/files/">Download</a> · <a id="view-checksum" href="/files/">SHA-256</a></p>
+        <p id="view-message" role="status" hidden></p>
         <pre class="text-file-content" tabindex="0" aria-label="File contents"><code id="text-content"></code></pre>
+        <div id="image-viewer" class="image-file-content"><img id="image-content" alt="Image preview"></div>
+        <p id="image-browser-note" class="small-note">If your browser cannot display this image, download it to open it on your computer.</p>
       </section>
       <section id="file-checksum" aria-label="File checksum" hidden>
         <p class="text-file-actions"><a id="checksum-back" href="/files/">« Back to folder</a> · <a id="checksum-download" class="file-download-link" href="/files/">Download original</a><span id="checksum-preview"> · <a id="checksum-view" href="/files/">View</a></span></p>

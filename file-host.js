@@ -6,7 +6,7 @@ import { Readable } from 'node:stream';
 const readFlags = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 const directoryFlags = readFlags | constants.O_DIRECTORY;
 export const defaultMaxUploadBytes = 10 * 1024 * 1024 * 1024;
-const maxTextViewBytes = 10 * 1024 * 1024;
+const maxViewBytes = 100 * 1024 * 1024;
 const maxFolderSizeEntries = 10000;
 const maxFolderSizeDepth = 64;
 const maxSearchEntries = 10000;
@@ -36,6 +36,41 @@ function fileURL(parts, directory = false) {
 
 function isTextFile(name) {
   return /\.(txt|md|json|log|csv|tsv|yaml|yml|toml|ini|cfg|conf|fgconfig)$/i.test(name) || /^readme$/i.test(name);
+}
+
+function imageType(name) {
+  const extension = name.match(/\.(jpe?g|jfif|png|gif|webp|bmp|ico|avif)$/i)?.[1].toLowerCase();
+  if (!extension) return null;
+  return { jpg: 'image/jpeg', jpeg: 'image/jpeg', jfif: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', bmp: 'image/bmp', ico: 'image/x-icon', avif: 'image/avif' }[extension];
+}
+
+function canPreview(name) {
+  return isTextFile(name) || imageType(name) !== null;
+}
+
+async function imagePreviewError(handle, stat, type) {
+  if (stat.size > maxViewBytes) return { status: 413, message: `This file is too large to view here. The viewer supports files up to ${formatSize(maxViewBytes)}; you can still download it.` };
+  const buffer = Buffer.alloc(32);
+  const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+  const signature = buffer.subarray(0, bytesRead);
+  let valid = false;
+  switch (type) {
+    case 'image/jpeg': valid = signature.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff])); break;
+    case 'image/png': valid = signature.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])); break;
+    case 'image/gif': valid = ['GIF87a', 'GIF89a'].includes(signature.toString('latin1', 0, 6)); break;
+    case 'image/webp': valid = signature.toString('latin1', 0, 4) === 'RIFF' && signature.toString('latin1', 8, 12) === 'WEBP'; break;
+    case 'image/bmp': valid = signature.toString('latin1', 0, 2) === 'BM'; break;
+    case 'image/x-icon': valid = signature.subarray(0, 4).equals(Buffer.from([0, 0, 1, 0])); break;
+    case 'image/avif':
+      if (signature.length >= 16 && signature.toString('latin1', 4, 8) === 'ftyp') {
+        const end = Math.min(signature.readUInt32BE(0), signature.length);
+        for (let offset = 8; offset + 4 <= end; offset += 4) {
+          if (offset !== 12 && ['avif', 'avis'].includes(signature.toString('latin1', offset, offset + 4))) valid = true;
+        }
+      }
+      break;
+  }
+  return valid ? null : { status: 415, message: 'This file is not a supported image. Download it to open it on your computer.' };
 }
 
 function escapeHTML(value) {
@@ -266,7 +301,7 @@ export async function createFileHost(rootPath, template, {
     rows += entries.map(entry => {
       const url = fileURL(entry.parts, entry.directory);
       const name = search ? entry.parts.join('\\') : entry.name;
-      const view = !entry.directory && isTextFile(entry.name) ? ` <a class="file-view-link" href="${url}?view=1" aria-label="View ${escapeHTML(name)}">View</a>` : '';
+      const view = !entry.directory && canPreview(entry.name) ? ` <a class="file-view-link" href="${url}?view=1" aria-label="View ${escapeHTML(name)}">View</a>` : '';
       const checksum = entry.directory ? '' : ` <a class="file-checksum-link" href="${url}?sha256=1" aria-label="SHA-256 checksum for ${escapeHTML(name)}">SHA-256</a>`;
       const size = entry.size === null ? '—' : formatSize(entry.size);
       return `<tr><td><a${entry.directory ? '' : ' class="file-download-link"'} href="${url}">${escapeHTML(name)}${entry.directory ? '\\' : ''}</a>${view}${checksum}</td><td${entry.directory ? ' title="Total size of downloadable files in this folder and its subfolders"' : ''}>${size}</td><td><time datetime="${entry.modified}">${entry.modified.slice(0, 10)}</time></td></tr>`;
@@ -291,7 +326,7 @@ export async function createFileHost(rootPath, template, {
       .on('#folder-size-note', { element: element => {
         if (entries.some(entry => entry.size === null)) element.setInnerContent('Folder sizes include downloadable files in subfolders. A dash means its size is unavailable; open the folder to browse its contents.');
       } })
-      .on('#text-viewer, #file-checksum', { element: element => element.remove() })
+      .on('#file-viewer, #file-checksum', { element: element => element.remove() })
       .on('#owner-tools', { element: element => {
         if (!tokenHash || isSecureRequest(request) !== true) element.remove();
         else element.setAttribute('data-folder', encodeName(parts.join('/')));
@@ -303,28 +338,32 @@ export async function createFileHost(rootPath, template, {
     return response;
   }
 
-  async function textFilePage(request, handle, stat, parts) {
+  async function filePreviewPage(request, handle, stat, parts) {
     const name = parts.at(-1);
+    const type = imageType(name);
     let content = '';
     let message = '';
     let status = 200;
-    if (!isTextFile(name)) {
+    if (type) {
+      const error = await imagePreviewError(handle, stat, type);
+      if (error) ({ message, status } = error);
+    } else if (!isTextFile(name)) {
       message = 'This file type cannot be previewed here. Download this file instead.';
       status = 415;
     } else {
       const chunks = [];
       let size = 0;
-      if (stat.size <= maxTextViewBytes) {
-        while (size <= maxTextViewBytes) {
-          const buffer = Buffer.alloc(Math.min(64 * 1024, maxTextViewBytes + 1 - size));
+      if (stat.size <= maxViewBytes) {
+        while (size <= maxViewBytes) {
+          const buffer = Buffer.alloc(Math.min(64 * 1024, maxViewBytes + 1 - size));
           const { bytesRead } = await handle.read(buffer, 0, buffer.length, size);
           if (!bytesRead) break;
           chunks.push(buffer.subarray(0, bytesRead));
           size += bytesRead;
         }
       }
-      if (stat.size > maxTextViewBytes || size > maxTextViewBytes) {
-        message = `This file is too large to view here. The viewer supports files up to ${formatSize(maxTextViewBytes)}; you can still download it.`;
+      if (stat.size > maxViewBytes || size > maxViewBytes) {
+        message = `This file is too large to view here. The viewer supports files up to ${formatSize(maxViewBytes)}; you can still download it.`;
         status = 413;
       } else {
         try {
@@ -341,17 +380,20 @@ export async function createFileHost(rootPath, template, {
     if (request.method === 'HEAD') return new Response(null, { status, headers: pageHeaders });
     return new HTMLRewriter()
       .on('title', { element: element => element.setInnerContent(`Moxiu / ${name}`) })
-      .on('.page-heading h1', { element: element => element.setInnerContent('Text file viewer ☆') })
-      .on('.page-heading p', { element: element => element.setInnerContent('Notes & explanations') })
+      .on('.page-heading h1', { element: element => element.setInnerContent(type ? 'Image file viewer ☆' : 'Text file viewer ☆') })
+      .on('.page-heading p', { element: element => element.setInnerContent(type ? 'Pictures & artwork' : 'Notes & explanations') })
       .on('.breadcrumb', { element: element => element.setInnerContent(`<a href="/home.html">Home</a> &gt; <a href="${fileURL(parts.slice(0, -1), true)}">Files</a> &gt; ${escapeHTML(name)}`, { html: true }) })
       .on('#folder-path', { element: element => element.setInnerContent(`C:\\files\\${parts.join('\\')}`) })
-      .on('.personal-copy', { element: element => element.setInnerContent('Read the notes below, or download the file.') })
+      .on('.personal-copy', { element: element => element.setInnerContent(type ? 'View the image below, or download the original.' : 'Read the notes below, or download the file.') })
       .on('#file-search, #file-search-results, .file-list, #folder-size-note, #owner-tools, #file-checksum', { element: element => element.remove() })
-      .on('#text-viewer', { element: element => element.removeAttribute('hidden') })
-      .on('#text-back', { element: element => element.setAttribute('href', fileURL(parts.slice(0, -1), true)) })
-      .on('#text-download', { element: element => element.setAttribute('href', fileURL(parts)) })
-      .on('#text-checksum', { element: element => element.setAttribute('href', `${fileURL(parts)}?sha256=1`) })
-      .on('#text-message', { element: element => {
+      .on('#file-viewer', { element: element => {
+        element.removeAttribute('hidden');
+        element.setAttribute('aria-label', type ? 'Image file viewer' : 'Text file viewer');
+      } })
+      .on('#view-back', { element: element => element.setAttribute('href', fileURL(parts.slice(0, -1), true)) })
+      .on('#view-download', { element: element => element.setAttribute('href', fileURL(parts)) })
+      .on('#view-checksum', { element: element => element.setAttribute('href', `${fileURL(parts)}?sha256=1`) })
+      .on('#view-message', { element: element => {
         if (message) {
           element.removeAttribute('hidden');
           element.setInnerContent(message);
@@ -359,6 +401,11 @@ export async function createFileHost(rootPath, template, {
       } })
       .on('.text-file-content', { element: element => { if (!content) element.remove(); } })
       .on('#text-content', { element: element => element.setInnerContent(content) })
+      .on('#image-viewer, #image-browser-note', { element: element => { if (!type || status !== 200) element.remove(); } })
+      .on('#image-content', { element: element => {
+        element.setAttribute('src', `${fileURL(parts)}?view=1&raw=1`);
+        element.setAttribute('alt', escapeHTML(`Preview of ${name}`));
+      } })
       .transform(new Response(template, { status, headers: pageHeaders }));
   }
 
@@ -395,11 +442,11 @@ export async function createFileHost(rootPath, template, {
       .on('.breadcrumb', { element: element => element.setInnerContent(`<a href="/home.html">Home</a> &gt; <a href="${fileURL(parts.slice(0, -1), true)}">Files</a> &gt; ${escapeHTML(name)}`, { html: true }) })
       .on('#folder-path', { element: element => element.setInnerContent(`C:\\files\\${parts.join('\\')}`) })
       .on('.personal-copy', { element: element => element.setInnerContent('Check your download against the original file :p') })
-      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #owner-tools, #text-viewer', { element: element => element.remove() })
+      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #owner-tools, #file-viewer', { element: element => element.remove() })
       .on('#file-checksum', { element: element => element.removeAttribute('hidden') })
       .on('#checksum-back', { element: element => element.setAttribute('href', fileURL(parts.slice(0, -1), true)) })
       .on('#checksum-download', { element: element => element.setAttribute('href', fileURL(parts)) })
-      .on('#checksum-preview', { element: element => { if (!isTextFile(name)) element.remove(); } })
+      .on('#checksum-preview', { element: element => { if (!canPreview(name)) element.remove(); } })
       .on('#checksum-view', { element: element => element.setAttribute('href', `${fileURL(parts)}?view=1`) })
       .on('#checksum-value', { element: element => element.setInnerContent(digest) })
       .transform(new Response(template, { headers: pageHeaders }));
@@ -425,7 +472,6 @@ export async function createFileHost(rootPath, template, {
       }
       if (pathname.endsWith('/')) return failure('Not found', 404);
       if (query.get('sha256') === '1') return await boundedResponse(checksumSlots, request, () => checksumPage(request, handle, stat, parts));
-      if (query.get('view') === '1') return await boundedResponse(pageSlots, request, () => textFilePage(request, handle, stat, parts));
       const name = parts.at(-1);
       const fallbackName = name.replace(/[^\x20-\x7e]|["%:<>?*|]/g, '_');
       const headers = {
@@ -436,6 +482,20 @@ export async function createFileHost(rootPath, template, {
         'Content-Security-Policy': "sandbox; default-src 'none'; frame-ancestors 'none'",
         'Referrer-Policy': 'no-referrer'
       };
+      if (query.get('view') === '1') {
+        if (query.get('raw') !== '1') return await boundedResponse(pageSlots, request, () => filePreviewPage(request, handle, stat, parts));
+        return await boundedResponse(pageSlots, request, async () => {
+          const type = imageType(name);
+          if (!type) return failure('This file type cannot be previewed as an image', 415);
+          const error = await imagePreviewError(handle, stat, type);
+          if (error) return failure(error.message, error.status);
+          const imageHeaders = { ...headers, 'Content-Type': type, 'Content-Disposition': headers['Content-Disposition'].replace(/^attachment;/, 'inline;'), 'Content-Length': String(stat.size) };
+          if (request.method === 'HEAD') return new Response(null, { headers: imageHeaders });
+          const body = Readable.toWeb(handle.createReadStream({ start: 0, end: stat.size - 1 }));
+          streaming = true;
+          return new Response(body, { headers: imageHeaders });
+        });
+      }
       if (request.method === 'HEAD') return new Response(null, { headers: { ...headers, 'Content-Length': String(stat.size) } });
       return await boundedResponse(downloadSlots, request, () => {
         const body = Readable.toWeb(handle.createReadStream());

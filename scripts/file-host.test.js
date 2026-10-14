@@ -14,6 +14,16 @@ const token = 'test-only-owner-token-with-at-least-32-characters';
 const limit = 1024;
 const secureFixture = { isSecureRequest: request => request.headers.get('x-forwarded-proto') !== 'http', minFreeBytes: 0 };
 
+const imageFixtures = [
+  ['jpg', 'image/jpeg', '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2wBDAQMDAwQDBAgEBAgQCwkLEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBD/wAARCAABAAEDAREAAhEBAxEB/8QAFAABAAAAAAAAAAAAAAAAAAAACP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/xAAVAQEBAAAAAAAAAAAAAAAAAAACCP/EABQRAQAAAAAAAAAAAAAAAAAAAAD/2gAMAwEAAhEDEQA/AE2ag3//2Q=='],
+  ['png', 'image/png', 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABAQMAAAAl21bKAAAAA1BMVEX/lrz8LtsMAAAACklEQVQI12NgAAAAAgAB4iG8MwAAAABJRU5ErkJggg=='],
+  ['gif', 'image/gif', 'R0lGODlhAQABAPAAAP+WvAAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=='],
+  ['webp', 'image/webp', 'UklGRjAAAABXRUJQVlA4ICQAAABQAQCdASoBAAEAAgA0JaAABDOAAP7w8Yv//ln/+UX+8rowAAA='],
+  ['bmp', 'image/bmp', 'Qk2OAAAAAAAAAIoAAAB8AAAAAQAAAAEAAAABABgAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAD/AAD/AAD/AAAAAAAA/0JHUnOPwvUoUbgeFR6F6wEzMzMTZmZmJmZmZgaZmZkJPQrXAyhcjzIAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAvJb/AA=='],
+  ['ico', 'image/x-icon', 'AAABAAEAAQEAAAEAIAAwAAAAFgAAACgAAAABAAAAAgAAAAEAIAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAC8lv//AAAAAA=='],
+  ['avif', 'image/avif', 'AAAAHGZ0eXBhdmlmAAAAAG1pZjFhdmlmbWlhZgAAANZtZXRhAAAAAAAAACFoZGxyAAAAAAAAAABwaWN0AAAAAAAAAAAAAAAAAAAAACJpbG9jAAAAAERAAAEAAQAAAAAA+gABAAAAAAAAACUAAAAjaWluZgAAAAAAAQAAABVpbmZlAgAAAAABAABhdjAxAAAAAA5waXRtAAAAAAABAAAAVmlwcnAAAAA4aXBjbwAAAAxhdjFDgUBsAAAAABRpc3BlAAAAAAAAAAEAAAABAAAAEHBpeGkAAAAAAwwMDAAAABZpcG1hAAAAAAAAAAEAAQOBAgMAAAAtbWRhdBIACghYAAa0BDQbhDIXGUeHhiGJpppmgAAAkD+bDGCLXWts/NE=']
+].map(([extension, type, base64]) => ({ extension, type, bytes: Buffer.from(base64, 'base64') }));
+
 beforeAll(async () => {
   fixture = await mkdtemp(resolve(tmpdir(), 'website-files-'));
   root = resolve(fixture, 'files');
@@ -412,7 +422,7 @@ test('text files have view links while existing file links still download origin
   expect(html).toContain('href="/files/README?view=1"');
   expect(html).not.toContain('.html?view=1');
   expect(html).not.toContain('nested/?view=1');
-  expect(html).not.toContain('id="text-viewer"');
+  expect(html).not.toContain('id="file-viewer"');
   const nested = await (await fetch(origin + '/files/nested/')).text();
   expect(nested).toContain('href="/files/nested/readme.md?view=1"');
 });
@@ -442,9 +452,9 @@ test('checksum pages show the original byte digest, safe navigation, and text pr
   expect(html).toContain('id="checksum-download" class="file-download-link" href="/files/nested/readme.md">Download original');
   expect(html).toContain('id="checksum-view" href="/files/nested/readme.md?view=1"');
   expect(html).toContain('C:\\files\\nested\\readme.md');
-  for (const id of ['text-viewer', 'owner-tools', 'file-search', 'file-entries']) expect(html).not.toContain(`id="${id}"`);
+  for (const id of ['file-viewer', 'owner-tools', 'file-search', 'file-entries']) expect(html).not.toContain(`id="${id}"`);
   const preview = await (await fetch(origin + '/files/nested/readme.md?view=1')).text();
-  expect(preview).toContain('id="text-checksum" href="/files/nested/readme.md?sha256=1"');
+  expect(preview).toContain('id="view-checksum" href="/files/nested/readme.md?sha256=1"');
   expect(preview).not.toContain('id="file-checksum"');
 });
 
@@ -611,6 +621,141 @@ test('checksum cache evicts older entries after 1000 files while retaining recen
   });
 });
 
+test('image formats have folder, search, preview, checksum, and original download links', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    await mkdir(resolve(path, 'pictures'));
+    const jpeg = imageFixtures.find(image => image.extension === 'jpg');
+    const formats = [...imageFixtures, { ...jpeg, extension: 'JPEG' }, { ...jpeg, extension: 'jfif' }];
+    for (const { extension, type, bytes } of formats) {
+      const name = `picture.${extension}`;
+      const url = `/files/pictures/${name}`;
+      await writeFile(resolve(path, 'pictures', name), bytes);
+      const listing = await (await isolated.download(new Request(origin + '/files/pictures/'), '/files/pictures/')).text();
+      expect(listing).toContain(`href="${url}?view=1"`);
+      expect(listing).not.toContain('id="image-content"');
+      const search = await (await isolated.download(new Request(origin + '/files/?q=' + name), '/files/')).text();
+      expect(search).toContain(`href="${url}?view=1" aria-label="View pictures\\${name}"`);
+      const preview = await isolated.download(new Request(origin + url + '?view=1'), url);
+      expect(preview.status).toBe(200);
+      const html = await preview.text();
+      expect(html).toContain('Image file viewer ☆');
+      expect(html).toContain(`src="${url}?view=1&raw=1"`);
+      expect(html).toContain(`alt="Preview of ${name}"`);
+      expect(html).toContain('id="view-back" href="/files/pictures/"');
+      expect(html).toContain(`id="view-download" href="${url}"`);
+      expect(html).toContain(`id="view-checksum" href="${url}?sha256=1"`);
+      for (const id of ['text-content', 'file-entries', 'owner-tools', 'file-checksum']) expect(html).not.toContain(`id="${id}"`);
+      const checksum = await (await isolated.download(new Request(origin + url + '?sha256=1'), url)).text();
+      expect(checksum).toContain(`id="checksum-view" href="${url}?view=1"`);
+      expect(checksum).not.toContain('id="image-content"');
+      const raw = await isolated.download(new Request(origin + url + '?view=1&raw=1'), url);
+      expect(raw.status).toBe(200);
+      expect(raw.headers.get('content-type')).toBe(type);
+      expect(raw.headers.get('content-disposition')).toStartWith('inline;');
+      expect(raw.headers.get('content-security-policy')).toContain('sandbox;');
+      expect(raw.headers.get('x-content-type-options')).toBe('nosniff');
+      expect(raw.headers.get('cache-control')).toBe('no-store');
+      expect(Buffer.from(await raw.arrayBuffer())).toEqual(bytes);
+      const head = await isolated.download(new Request(origin + url + '?view=1&raw=1', { method: 'HEAD' }), url);
+      expect(head.headers.get('content-type')).toBe(type);
+      expect(head.headers.get('content-length')).toBe(String(bytes.length));
+      expect(await head.text()).toBe('');
+      const pageHead = await isolated.download(new Request(origin + url + '?view=1', { method: 'HEAD' }), url);
+      expect(pageHead.headers.get('content-type')).toContain('text/html');
+      expect(await pageHead.text()).toBe('');
+      const original = await isolated.download(new Request(origin + url), url);
+      expect(original.headers.get('content-type')).toBe('application/octet-stream');
+      expect(original.headers.get('content-disposition')).toStartWith('attachment;');
+      expect(Buffer.from(await original.arrayBuffer())).toEqual(bytes);
+      for (const suffix of ['?view=1', '?view=1&raw=1']) {
+        expect((await isolated.download(new Request(origin + url + suffix), url, { attachmentOnly: true })).status).toBe(404);
+      }
+    }
+  });
+});
+
+test('image previews safely encode filenames and recognize compatible AVIF brands', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    const name = '空 " onerror="evil & #%.PNG';
+    const url = '/files/' + encodeURIComponent(name);
+    const png = imageFixtures.find(image => image.extension === 'png').bytes;
+    await writeFile(resolve(path, name), png);
+    const preview = await (await isolated.download(new Request(origin + url + '?view=1'), '/files/' + name)).text();
+    let source;
+    let alt;
+    await new HTMLRewriter().on('#image-content', { element(element) {
+      source = element.getAttribute('src');
+      alt = element.getAttribute('alt');
+      expect(element.getAttribute('onerror')).toBeNull();
+    } }).transform(new Response(preview)).text();
+    expect(source).toBe(url + '?view=1&raw=1');
+    expect(alt).toBe('Preview of 空 &quot; onerror=&quot;evil &amp; #%.PNG');
+    const avif = Buffer.from(imageFixtures.find(image => image.extension === 'avif').bytes);
+    avif.write('mif1', 8, 'latin1');
+    await writeFile(resolve(path, 'compatible.avif'), avif);
+    const raw = await isolated.download(new Request(origin + '/files/compatible.avif?view=1&raw=1'), '/files/compatible.avif');
+    expect(raw.status).toBe(200);
+    expect(Buffer.from(await raw.arrayBuffer())).toEqual(avif);
+  });
+});
+
+test('invalid images and unsupported inline formats are rejected without changing downloads', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    for (const [name, bytes] of [['empty.png', ''], ['fake.jpg', '<script>alert(1)</script>'], ['wrong.webp', 'RIFFxxxxWAVE'], ['active.svg', '<svg onload="alert(1)"></svg>'], ['notes.txt', 'plain text']]) {
+      await writeFile(resolve(path, name), bytes);
+      const url = '/files/' + name;
+      if (name !== 'notes.txt') {
+        const preview = await isolated.download(new Request(origin + url + '?view=1'), url);
+        expect(preview.status).toBe(415);
+        const html = await preview.text();
+        expect(html).not.toContain('id="image-content"');
+        expect(html).toContain(`id="view-download" href="${url}"`);
+      }
+      const raw = await isolated.download(new Request(origin + url + '?view=1&raw=1'), url);
+      expect(raw.status).toBe(415);
+      expect(raw.headers.get('content-type')).not.toStartWith('image/');
+      await raw.text();
+      const original = await isolated.download(new Request(origin + url), url);
+      expect(original.headers.get('content-disposition')).toStartWith('attachment;');
+      expect(await original.text()).toBe(bytes);
+    }
+    const listing = await (await isolated.download(new Request(origin + '/files/'), '/files/')).text();
+    expect(listing).not.toContain('active.svg?view=1');
+  });
+});
+
+test('image size limits and streaming cancellation preserve browsing capacity and file boundaries', async () => {
+  await isolatedHost({ maxConcurrentPages: 1 }, async (isolated, path) => {
+    const png = imageFixtures.find(image => image.extension === 'png').bytes;
+    const limit = 100 * 1024 * 1024;
+    const bytes = Buffer.alloc(limit + 1);
+    png.copy(bytes);
+    await writeFile(resolve(path, 'limit.png'), bytes.subarray(0, limit));
+    await writeFile(resolve(path, 'large.png'), bytes);
+    await writeFile(resolve(path, '.hidden.png'), png);
+    await symlink(resolve(path, 'limit.png'), resolve(path, 'linked.png'));
+    for (const suffix of ['?view=1', '?view=1&raw=1']) {
+      const large = await isolated.download(new Request(origin + '/files/large.png' + suffix), '/files/large.png');
+      expect(large.status).toBe(413);
+      expect(await large.text()).toContain('100.0 MiB');
+      expect((await isolated.download(new Request(origin + '/files/.hidden.png' + suffix), '/files/.hidden.png')).status).toBe(403);
+      expect((await isolated.download(new Request(origin + '/files/linked.png' + suffix), '/files/linked.png')).status).toBe(404);
+    }
+    const page = await isolated.download(new Request(origin + '/files/limit.png?view=1'), '/files/limit.png');
+    expect(page.status).toBe(200);
+    await page.text();
+    const raw = await isolated.download(new Request(origin + '/files/limit.png?view=1&raw=1'), '/files/limit.png');
+    expect(raw.status).toBe(200);
+    expect((await isolated.download(new Request(origin + '/files/'), '/files/')).status).toBe(429);
+    await raw.body.cancel();
+    const listing = await isolated.download(new Request(origin + '/files/'), '/files/');
+    expect(listing.status).toBe(200);
+    await listing.text();
+    const original = await isolated.download(new Request(origin + '/files/large.png'), '/files/large.png');
+    expect((await original.arrayBuffer()).byteLength).toBe(limit + 1);
+  });
+});
+
 test('the text viewer renders UTF-8 notes with folder navigation and a download link', async () => {
   const response = await fetch(origin + '/files/hello.txt?view=1');
   expect(response.status).toBe(200);
@@ -621,14 +766,15 @@ test('the text viewer renders UTF-8 notes with folder navigation and a download 
   const html = await response.text();
   expect(html).toContain('<title>Moxiu / hello.txt</title>');
   expect(html).toContain('id="text-content">hello ☆</code>');
-  expect(html).toContain('id="text-back" href="/files/"');
-  expect(html).toContain('id="text-download" href="/files/hello.txt"');
+  expect(html).toContain('id="view-back" href="/files/"');
+  expect(html).toContain('id="view-download" href="/files/hello.txt"');
+  expect(html).not.toContain('id="image-content"');
   for (const id of ['owner-tools', 'file-search', 'file-entries']) expect(html).not.toContain(`id="${id}"`);
   const nested = await (await fetch(origin + '/files/nested/readme.md?view=1')).text();
   expect(nested).toContain('C:\\files\\nested\\readme.md');
   expect(nested).toContain('# Folder notes\n\nThese downloads belong together.');
-  expect(nested).toContain('id="text-back" href="/files/nested/"');
-  expect(nested).toContain('id="text-download" href="/files/nested/readme.md"');
+  expect(nested).toContain('id="view-back" href="/files/nested/"');
+  expect(nested).toContain('id="view-download" href="/files/nested/readme.md"');
   const readme = await (await fetch(origin + '/files/README?view=1')).text();
   expect(readme).toContain('About these downloads');
   const head = await fetch(origin + '/files/hello.txt?view=1', { method: 'HEAD' });
@@ -666,7 +812,7 @@ test('empty, binary, unsupported, and oversized files have appropriate viewer re
   await writeFile(resolve(root, 'empty-view.txt'), '');
   await writeFile(resolve(root, 'binary-view.txt'), new Uint8Array([0, 1, 2]));
   await writeFile(resolve(root, 'invalid-utf8.txt'), new Uint8Array([0xff, 0xfe]));
-  const previewLimit = 10 * 1024 * 1024;
+  const previewLimit = 100 * 1024 * 1024;
   await writeFile(resolve(root, 'view-at-limit.txt'), 'x'.repeat(previewLimit));
   await writeFile(resolve(root, 'view-too-large.txt'), 'x'.repeat(previewLimit + 1));
   const empty = await fetch(origin + '/files/empty-view.txt?view=1');
@@ -677,19 +823,21 @@ test('empty, binary, unsupported, and oversized files have appropriate viewer re
     expect(response.status).toBe(415);
     const html = await response.text();
     expect(html).toContain('This file is not UTF-8 text.');
-    expect(html).toContain(`id="text-download" href="/files/${name}"`);
+    expect(html).toContain(`id="view-download" href="/files/${name}"`);
     expect(html).not.toContain('id="text-content"');
   }
   const unsupported = await fetch(origin + '/files/' + encodeURIComponent('<script>&".html') + '?view=1');
   expect(unsupported.status).toBe(415);
   expect(await unsupported.text()).toContain('This file type cannot be previewed here.');
-  expect((await fetch(origin + '/files/view-at-limit.txt?view=1')).status).toBe(200);
+  const atLimit = await fetch(origin + '/files/view-at-limit.txt?view=1');
+  expect(atLimit.status).toBe(200);
+  await atLimit.body.cancel();
   const large = await fetch(origin + '/files/view-too-large.txt?view=1');
   expect(large.status).toBe(413);
   const html = await large.text();
   expect(html).toContain('This file is too large to view here.');
-  expect(html).toContain('10.0 MiB');
-  expect(html).toContain('id="text-download" href="/files/view-too-large.txt"');
+  expect(html).toContain('100.0 MiB');
+  expect(html).toContain('id="view-download" href="/files/view-too-large.txt"');
   expect(html).not.toContain('id="text-content"');
   const original = await fetch(origin + '/files/view-too-large.txt');
   expect(original.status).toBe(200);

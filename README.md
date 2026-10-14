@@ -33,9 +33,9 @@ put downloads in `files/`. stuff in there is public, so keep passwords, tokens a
 
 set `FILES_UPLOAD_TOKEN` to a random secret with at least 32 characters to enable webmaster tools. uploads and making folders need HTTPS in production. the tools start closed.
 
-uploads are **10 GiB per file** by default. `FILES_MAX_UPLOAD_MB=10240` is optional unless you want to change that. text files, Markdown and other supported text formats have a preview, up to 10 MiB.
+uploads are **10 GiB per file** by default. `FILES_MAX_UPLOAD_MB=10240` is optional unless you want to change that. text files, Markdown and other supported text formats have a preview, up to 100 MiB. JPG/JPEG/JFIF, PNG, GIF, WebP, BMP, ICO and AVIF images have a preview too, with the same 100 MiB limit; format support depends on your browser.
 
-each file has a **SHA-256** link to see its original checksum and download the file. checksums are calculated on demand from the original bytes, including for binary and large files. text previews link to the checksum too. the server keeps up to 1,000 verified hashes in memory and checks file identity, size and timestamps before reusing one. checksum requests have their own concurrency limit so they don't occupy listing or preview slots.
+each file has a **SHA-256** link to see its original checksum and download the file. checksums are calculated on demand from the original bytes, including for binary and large files. previews link to the checksum too. the server keeps up to 1,000 verified hashes in memory and checks file identity, size and timestamps before reusing one. checksum requests have their own concurrency limit so they don't occupy listing or preview slots.
 
 search looks through all folders and subfolders and shows the full path. it checks up to 10,000 entries, goes 64 folders deep and shows up to 1,000 matches. normal folder listings have the same entry and result limits. if there's more, the page tells you; you can still browse the folders.
 
