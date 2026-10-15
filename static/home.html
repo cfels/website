@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>moxiu☆ちゃんねる / home</title>
   <link rel="icon" href="assets/favicon.png" type="image/png">
-  <script src="/page.js" defer></script>
+  <link rel="preload" href="/page.js" as="script" fetchpriority="high">
   <link rel="stylesheet" href="site.css">
   <!--[if lte IE 8]>
   <script src="/legacy.js"></script>
@@ -14,6 +14,7 @@
   <![endif]-->
 </head>
 <body>
+  <script src="/page.js"></script>
   <main class="site">
     <header class="masthead">
       <div>
@@ -21,7 +22,7 @@
         <p>Linux, low-level stuff &amp; Lucky☆Star!</p>
       </div>
       <div class="mini-banner">
-        <a href="https://github.com/cfels" target="_blank" rel="noopener noreferrer" aria-label="BadHub's projects"><img src="assets/additions/5.webp" width="69" height="50" alt="Lucky Star characters"></a>
+        <a href="https://github.com/cfels" target="_blank" rel="noopener noreferrer" aria-label="BadHub's projects"><img fetchpriority="low" src="assets/additions/5.webp" width="69" height="50" alt="Lucky Star characters"></a>
         <span>Projects &amp; stuff<br><b><a href="https://github.com/cfels" target="_blank" rel="noopener noreferrer">BadHub</a> / <a href="https://codeberg.org/moxi" target="_blank" rel="noopener noreferrer">Codeberg</a></b></span>
       </div>
     </header>
@@ -30,13 +31,13 @@
       <div>
         <div class="character-corner">
           <a class="art-link" href="gallery.html" aria-label="Visit the Lucky Star picture corner">
-            <img class="wallpaper" src="assets/luckybg_main.webp" width="800" height="493" alt="Kagami, Miyuki, Tsukasa, and Konata in their school uniforms">
-            <img class="vertical-logo" src="assets/logo.png" width="54" height="235" alt="らき☆すた — Lucky Star">
+            <img fetchpriority="low" class="wallpaper" src="assets/luckybg_main.webp" width="800" height="493" alt="Kagami, Miyuki, Tsukasa, and Konata in their school uniforms">
+            <img fetchpriority="low" class="vertical-logo" src="assets/logo.png" width="54" height="235" alt="らき☆すた — Lucky Star">
             <!--[if lte IE 8]><span class="legacy-vertical-logo" role="img" aria-label="らき☆すた — Lucky Star"></span><![endif]-->
             <span class="art-label"><span lang="ja">らき☆すた</span> / picture corner »</span>
           </a>
           <section class="welcome">
-            <div class="titlebar"><span>welcome.txt - Notepad</span><span class="window-controls" aria-hidden="true"><img src="assets/buttons/lucky-ch-window-controls.gif" width="51" height="15" alt=""></span></div>
+            <div class="titlebar"><span>welcome.txt - Notepad</span><span class="window-controls" aria-hidden="true"><img fetchpriority="low" src="assets/buttons/lucky-ch-window-controls.gif" width="51" height="15" alt=""></span></div>
             <div class="welcome-body">
               <h2>Haiii~</h2>
               <p>I'm <strong>Moxiu</strong>, and i'm unemployed?</p>
@@ -45,7 +46,7 @@
               <a href="profile.html">More about me »</a>
             </div>
           </section>
-          <img class="featured-character" src="assets/konata_cutout.webp" width="274" height="537" alt="Konata Izumi">
+          <img fetchpriority="low" class="featured-character" src="assets/konata_cutout.webp" width="274" height="537" alt="Konata Izumi">
         </div>
         <section class="home-links">
           <h2>Elsewhere on the web ☆</h2>
@@ -72,7 +73,7 @@
           <h2 class="section-bar"><span lang="ja">管理人の小部屋</span></h2>
           <div class="side-body">
             <div class="profile-snippet">
-              <a href="profile.html"><img src="assets/additions/4.webp" width="240" height="305" alt="Konata and Kanata"></a>
+              <a href="profile.html"><img fetchpriority="low" src="assets/additions/4.webp" width="240" height="305" alt="Konata and Kanata"></a>
               <p>Moxiu<br>Polish (native)<br>English: C1<br><a href="profile.html">profile »</a></p>
             </div>
             <ul class="mini-links">
@@ -82,7 +83,7 @@
               <li><a href="gallery.html">Lucky☆Star picture corner</a></li>
               <li><a href="https://www.lucky-ch.com/" target="_blank" rel="noopener noreferrer">Official Lucky☆Star site</a></li>
             </ul>
-            <a href="gallery.html"><img class="fan-stamp" src="assets/additions/1.webp" width="240" height="308" alt="Kagami, Konata, and Miyuki — more pictures inside"></a>
+            <a href="gallery.html"><img fetchpriority="low" class="fan-stamp" src="assets/additions/1.webp" width="240" height="308" alt="Kagami, Konata, and Miyuki — more pictures inside"></a>
           </div>
         </section>
       </aside>

@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Moxiu / contact</title>
   <link rel="icon" href="assets/favicon.png" type="image/png">
-  <script src="/page.js" defer></script>
+  <link rel="preload" href="/page.js" as="script" fetchpriority="high">
   <link rel="stylesheet" href="site.css">
   <!--[if lte IE 8]>
   <script src="/legacy.js"></script>
@@ -14,8 +14,9 @@
   <![endif]-->
 </head>
 <body>
+  <script src="/page.js"></script>
   <main class="site">
-    <header class="page-heading"><h1>Contact Me ☆</h1><p lang="ja">メール・連絡先</p><img src="assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
+    <header class="page-heading"><h1>Contact Me ☆</h1><p lang="ja">メール・連絡先</p><img fetchpriority="low" src="assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
     <p class="breadcrumb"><a href="home.html">Home</a> &gt; Contact</p>
     <div class="page-columns">
       <article class="document-paper">
@@ -32,7 +33,7 @@
       </article>
       <aside class="sidebar">
         <h2 lang="ja">こなたの小部屋</h2>
-        <a href="gallery.html"><img src="assets/additions/2.webp" width="213" height="320" alt="Kagami and Konata, Lucky Star artwork"></a>
+        <a href="gallery.html"><img fetchpriority="low" src="assets/additions/2.webp" width="213" height="320" alt="Kagami and Konata, Lucky Star artwork"></a>
         <p>Haiii~</p>
         <a href="profile.html">About the webmaster »</a>
       </aside>

@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>404 / page not found</title>
-  <script src="/page.js" defer></script>
+  <link rel="preload" href="/page.js" as="script" fetchpriority="high">
   <link rel="stylesheet" href="/site.css">
   <!--[if lte IE 8]>
   <script src="/legacy.js"></script>
@@ -13,8 +13,9 @@
   <![endif]-->
 </head>
 <body>
+  <script src="/page.js"></script>
   <main class="site">
-    <header class="page-heading"><h1>404 &gt;_&lt;</h1><p>i don't think that page exists!</p><img src="/assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
+    <header class="page-heading"><h1>404 &gt;_&lt;</h1><p>i don't think that page exists!</p><img fetchpriority="low" src="/assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
     <article class="document-paper personal-copy"><p><a href="/home.html">← back home</a></p><p><a href="/index.html" target="_top">Open the homepage »</a></p></article>
   </main>
 </body>

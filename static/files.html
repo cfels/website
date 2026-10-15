@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Moxiu / files</title>
   <link rel="icon" href="/assets/favicon.png" type="image/png">
-  <script src="/page.js" defer></script>
+  <link rel="preload" href="/page.js" as="script" fetchpriority="high">
   <link rel="stylesheet" href="/site.css">
   <!--[if lte IE 8]>
   <script src="/legacy.js"></script>
@@ -17,8 +17,9 @@
   <!--<![endif]-->
 </head>
 <body>
+  <script src="/page.js"></script>
   <main class="site">
-    <header class="page-heading"><h1>My file stash ☆</h1><p>Downloads &amp; random stuff</p><img src="/assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
+    <header class="page-heading"><h1>My file stash ☆</h1><p>Downloads &amp; random stuff</p><img fetchpriority="low" src="/assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
     <p class="breadcrumb"><a href="/home.html">Home</a> &gt; Files</p>
     <article class="document-paper file-browser">
       <h2 id="folder-path">C:\files\</h2>
@@ -44,7 +45,7 @@
         <p class="text-file-actions"><a id="view-back" href="/files/">« Back to folder</a> · <a id="view-download" href="/files/">Download</a> · <a id="view-checksum" href="/files/">SHA-256</a></p>
         <p id="view-message" role="status" hidden></p>
         <pre class="text-file-content" tabindex="0" aria-label="File contents"><code id="text-content"></code></pre>
-        <div id="image-viewer" class="image-file-content"><img id="image-content" alt="Image preview"></div>
+        <div id="image-viewer" class="image-file-content"><img fetchpriority="low" id="image-content" alt="Image preview"></div>
         <p id="image-browser-note" class="small-note">If your browser cannot display this image, download it to open it on your computer.</p>
       </section>
       <section id="file-checksum" aria-label="File checksum" hidden>

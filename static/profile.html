@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Moxiu / profile</title>
   <link rel="icon" href="assets/favicon.png" type="image/png">
-  <script src="/page.js" defer></script>
+  <link rel="preload" href="/page.js" as="script" fetchpriority="high">
   <link rel="stylesheet" href="site.css">
   <!--[if lte IE 8]>
   <script src="/legacy.js"></script>
@@ -14,8 +14,9 @@
   <![endif]-->
 </head>
 <body>
+  <script src="/page.js"></script>
   <main class="site">
-    <header class="page-heading"><h1>About the webmaster ☆</h1><p lang="ja">管理人プロフィール</p><img src="assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
+    <header class="page-heading"><h1>About the webmaster ☆</h1><p lang="ja">管理人プロフィール</p><img fetchpriority="low" src="assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
     <p class="breadcrumb"><a href="home.html">Home</a> &gt; Profile</p>
     <div class="page-columns">
       <article class="document-paper">
@@ -73,7 +74,7 @@
       </article>
       <aside class="sidebar">
         <h2>☆ profile corner ☆</h2>
-        <img class="side-cutout" src="assets/konata_cutout.webp" width="274" height="537" alt="Konata Izumi">
+        <img fetchpriority="low" class="side-cutout" src="assets/konata_cutout.webp" width="274" height="537" alt="Konata Izumi">
         <p>Linux &amp; low-level stuff.<br>Mostly. :p</p>
         <a href="https://github.com/cfels" target="_blank" rel="noopener noreferrer">cfels / BadHub »</a>
         <a href="https://codeberg.org/moxi" target="_blank" rel="noopener noreferrer">moxi / Codeberg »</a>

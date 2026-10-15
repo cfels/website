@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Moxiu / support</title>
   <link rel="icon" href="../assets/favicon.png" type="image/png">
-  <script src="/page.js" defer></script>
+  <link rel="preload" href="/page.js" as="script" fetchpriority="high">
   <link rel="stylesheet" href="../site.css">
   <!--[if lte IE 8]>
   <script src="/legacy.js"></script>
@@ -14,8 +14,9 @@
   <![endif]-->
 </head>
 <body>
+  <script src="/page.js"></script>
   <main class="site">
-    <header class="page-heading"><h1>Support ☆</h1><p>Thank you &lt;3</p><img src="../assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
+    <header class="page-heading"><h1>Support ☆</h1><p>Thank you &lt;3</p><img fetchpriority="low" src="../assets/logo.png" width="54" height="235" alt="Lucky Star"></header>
     <p class="breadcrumb"><a href="../home.html">Home</a> &gt; Support</p>
     <div class="page-columns">
       <article class="document-paper">
@@ -26,7 +27,7 @@
         <section class="coin"><h2>Toncoin</h2><code>UQDC7-Fnup560oTWeH8P12lbdYs_DDLoo4wZLIh_xubqEigK</code></section>
         <p class="small-note">Select an address to copy it.</p>
       </article>
-      <aside class="sidebar"><h2>Thanks for visiting ☆</h2><img class="side-cutout" src="../assets/konata_cutout.webp" width="274" height="537" alt="Konata Izumi"><p><a href="../contact.html">Contact me »</a></p></aside>
+      <aside class="sidebar"><h2>Thanks for visiting ☆</h2><img fetchpriority="low" class="side-cutout" src="../assets/konata_cutout.webp" width="274" height="537" alt="Konata Izumi"><p><a href="../contact.html">Contact me »</a></p></aside>
     </div>
     <nav class="bottom-links" aria-label="Document navigation"><a href="../home.html">Home</a> · <a href="../profile.html">About me</a> · <a href="../contact.html">Contact</a></nav>
   </main>

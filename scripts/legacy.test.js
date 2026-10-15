@@ -265,7 +265,10 @@ test('every content document provides IE8 standards mode, UTF-8, and conditional
       expect(html).toContain('<script src="/legacy.js"></script>');
       expect(html).toContain('<link rel="stylesheet" href="/legacy.css">');
       expect(html.indexOf('/legacy.js')).toBeLessThan(html.indexOf('<body'));
-      if (name !== 'header.html' && name !== 'footer.html') expect(html).toContain('<script src="/page.js" defer></script>');
+      if (name !== 'header.html' && name !== 'footer.html') {
+        expect(html).toContain('<link rel="preload" href="/page.js" as="script" fetchpriority="high">');
+        expect(html).toContain('<body>\n  <script src="/page.js"></script>');
+      }
     }
     for (const image of html.matchAll(/(?:src|href)="[^"\s]*assets\/([^"\s]+)\.webp"/g)) {
       const png = new Uint8Array(await Bun.file(resolve(root, 'assets', image[1] + '.png')).arrayBuffer());
@@ -274,6 +277,19 @@ test('every content document provides IE8 standards mode, UTF-8, and conditional
   }
   const filesPage = await Bun.file(resolve(root, 'files.html')).text();
   expect(filesPage).toContain('<!--[if gt IE 8]><!-->\n  <script src="/files.js" defer></script>\n  <!--<![endif]-->');
+});
+
+test('navigation and footer images take priority over content artwork', async () => {
+  const files = await readdir(root, { recursive: true });
+  for (const name of files.filter(name => name.endsWith('.html'))) {
+    const html = await Bun.file(resolve(root, name)).text();
+    const priority = name === 'header.html' || name === 'footer.html' ? 'high' : 'low';
+    await new HTMLRewriter().on('img', {
+      element(element) { expect(element.getAttribute('fetchpriority')).toBe(priority); }
+    }).transform(new Response(html)).text();
+  }
+  const index = await Bun.file(resolve(root, 'index.html')).text();
+  expect(index).toContain('<link rel="preload" href="site.css" as="style" fetchpriority="high">');
 });
 
 test('all website font faces have valid self-hosted EOT fallbacks', async () => {
