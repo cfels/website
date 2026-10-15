@@ -38,6 +38,22 @@ test('frame navigation works with IE8 click handlers', async () => {
   expect(events).toEqual(['back', 'forward', 'reload']);
 });
 
+test('menu shortcuts use the Latin font instead of the Japanese subset', async () => {
+  const labels = [];
+  const japanese = [];
+  const rewriter = new HTMLRewriter()
+    .on('.menubar a', {
+      element(element) { expect(element.getAttribute('lang')).toBeNull(); },
+      text(chunk) { labels.push(chunk.text); }
+    })
+    .on('.menubar [lang="ja"]', {
+      text(chunk) { japanese.push(chunk.text); }
+    });
+  await rewriter.transform(new Response(await Bun.file(resolve(root, 'header.html')).text())).text();
+  expect(labels.join('')).toBe('ファイル(F)表示(V)ブックマーク(B)Files');
+  expect(japanese.join('')).toBe('ファイル表示ブックマーク');
+});
+
 test('legacy setup enables semantic elements and replaces unsupported artwork and gallery links', async () => {
   const elements = [];
   const images = [{ src: 'http://localhost/assets/luckybg_main.webp' }, { src: 'http://localhost/assets/logo.png' }, { src: 'http://localhost/assets/additions/1.webp', className: 'fan-stamp' }];
