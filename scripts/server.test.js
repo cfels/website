@@ -34,8 +34,8 @@ beforeAll(async () => {
   });
 });
 
-test('download listener does not serve website pages, previews, or owner actions', async () => {
-  for (const path of ['/', '/home.html', '/files/', '/files/example.txt?view=1', '/files/example.txt?sha256=1', '/files/example.png?view=1', '/files/example.png?view=1&raw=1', '/api/files/upload']) {
+test('download listener does not serve content pages, artwork, previews, or owner actions', async () => {
+  for (const path of ['/', '/home.html', '/profile.html', '/files/', '/assets/luckybg_main.webp', '/assets/additions/1.webp', '/files/example.txt?view=1', '/files/example.txt?sha256=1', '/files/example.png?view=1', '/files/example.png?view=1&raw=1', '/api/files/upload']) {
     expect((await fetch(downloadOrigin + path)).status).toBe(404);
   }
   for (const path of ['/api/files/upload', '/api/files/mkdir', '/files/example.txt']) {
@@ -43,6 +43,34 @@ test('download listener does not serve website pages, previews, or owner actions
   }
   expect((await fetch(downloadOrigin + '/%zz')).status).toBe(400);
   expect((await fetch(downloadOrigin + '/files/%00')).status).toBe(403);
+});
+
+test('download listener serves the bars and their dependencies with normal static protections', async () => {
+  const paths = new Set(['/header.html', '/footer.html', '/site.css', '/header.js', '/frames.js', '/page.js', '/legacy.js', '/legacy.css', '/assets/favicon.png', '/assets/titlebar.png', '/assets/chrome-stripe.png', '/assets/fonts/tahoma.woff2', '/assets/fonts/toolbar.eot']);
+  for (const name of ['header', 'footer']) {
+    await new HTMLRewriter().on('img', {
+      element(element) { paths.add('/' + element.getAttribute('src')); }
+    }).transform(new Response(await Bun.file(resolve(import.meta.dir, `../static/${name}.html`)).text())).text();
+  }
+  for (const path of paths) {
+    const fast = await fetch(downloadOrigin + path);
+    const normal = await fetch(origin + path);
+    expect(fast.status).toBe(200);
+    expect(new Uint8Array(await fast.arrayBuffer())).toEqual(new Uint8Array(await normal.arrayBuffer()));
+    for (const header of ['content-type', 'cache-control', 'etag', 'content-security-policy', 'x-content-type-options', 'x-frame-options']) {
+      expect(fast.headers.get(header)).toBe(normal.headers.get(header));
+    }
+    const cached = await fetch(downloadOrigin + path, { headers: { 'If-None-Match': fast.headers.get('etag') } });
+    expect(cached.status).toBe(304);
+    expect((await cached.arrayBuffer()).byteLength).toBe(0);
+    const head = await fetch(downloadOrigin + path, { method: 'HEAD' });
+    expect(head.status).toBe(200);
+    expect((await head.arrayBuffer()).byteLength).toBe(0);
+  }
+  for (const path of ['/assets/fonts/.private', '/assets/navigation/%00', '/assets/buttons/..%2f..%2f..%2fpackage.json']) {
+    expect((await fetch(downloadOrigin + path)).status).toBe(403);
+  }
+  expect((await fetch(downloadOrigin + '/header.html', { method: 'POST' })).status).toBe(405);
 });
 
 test('both listeners serve folder archives as attachments without exposing directory pages on the download listener', async () => {

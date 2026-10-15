@@ -32,9 +32,21 @@ http://moxiu.vacpro.fyi {
         max_size 10GiB
     }
 
+    @chrome {
+        method GET HEAD
+        path /header.html /footer.html /site.css /header.js /frames.js /page.js /legacy.js /legacy.css /assets/favicon.png /assets/titlebar.png /assets/chrome-stripe.png /assets/navigation/* /assets/buttons/* /assets/fonts/*
+    }
+
+    handle @chrome {
+        reverse_proxy 172.17.0.1:3003 {
+            trusted_proxies 10.0.0.1/32
+        }
+    }
+
     @downloads {
         method GET HEAD
-        path_regexp downloadable ^/files/.+\.[^/]+$
+        path /files/*
+        expression `path_regexp('^/files/.+[.][^/]+$') || query({'download': '1'})`
         not query view=1
         not query sha256=1
     }

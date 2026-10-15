@@ -56,7 +56,7 @@ downloads & random stuff. help yourself :p
 | `TRUSTED_PROXY_IPS` | `127.0.0.1,::1` | individual IPs of proxies connecting straight to Bun, separated by commas. only these can tell the app a request used HTTPS. empty means trust none. |
 | `FILES_UPLOAD_TOKEN` | empty | random secret for webmaster tools, at least 32 characters. empty disables owner actions. |
 | `FILES_MAX_UPLOAD_MB` | `10240` | upload limit per file, in MiB. default is 10 GiB. the value must give a positive, safe integer number of bytes. |
-| `FILES_DOWNLOAD_PORT` | unset | optional separate port for downloads only. use 1–65535, or 0 for a random test port. keep this behind Caddy too. |
+| `FILES_DOWNLOAD_PORT` | unset | optional separate port for downloads and navigation resources. use 1–65535, or 0 for a random test port. keep this behind Caddy too. |
 | `FILES_STORAGE_LIMIT_MB` | `102400` | total file stash limit in MiB. default is 100 GiB; uploads reserve room before writing. |
 | `FILES_MIN_FREE_SPACE_MB` | `1024` | free disk space to leave available, in MiB. default is 1 GiB, checked before uploads and folder creation. |
 | `FILES_MAX_CONCURRENT_PAGES` | `4` | file listings and previews served at once, until the response finishes or is cancelled. |
@@ -85,9 +85,11 @@ use the IP after `src` for `TRUSTED_PROXY_IPS`, then restart the website. for an
 
 home Caddy still needs `trusted_proxies 10.0.0.1/32` for the VPS. that's a separate setting: Caddy trusts the VPS, Bun trusts home Caddy. with the wrong Bun setting, owner actions return 403.
 
-`FILES_DOWNLOAD_PORT` is optional. it's there so Caddy can send downloads to a different port when the website port is slowed down for retro loading.
+`FILES_DOWNLOAD_PORT` is optional. it's there so Caddy can send downloads and the navigation resources to a different port when the website port is slowed down for retro loading.
 
-when using that port, keep both `not query view=1` and `not query sha256=1` in Caddy's download matcher so previews and checksum pages go to the website port.
+when using that port, keep both `not query view=1` and `not query sha256=1` in Caddy's download matcher so previews and checksum pages go to the website port. the matcher must also include `/files/*?download=1`: folder ZIP URLs have no file extension, so an extension-only matcher sends them to the website port and any retro speed limit on it.
+
+the `@chrome` matcher sends the navigation and bottom button bar, shared stylesheets, scripts, navigation/button images and fonts to the fast port. content pages and the main artwork still use the website port for retro loading. the fast listener only allows those navigation resources and file attachments; it doesn't serve content pages, previews or owner actions. deploy the updated application together with the Caddy configuration so the fast listener can serve the bars. browser fetch priorities cannot bypass a `tc` bandwidth limit on port 3001.
 
 ## security
 

@@ -15,6 +15,7 @@ if (!(await Bun.file(resolve(root, 'index.html')).exists())) {
   throw new Error('Run bun run build before starting the production server.');
 }
 const publicRoot = await realpath(root);
+const chromePaths = new Set(['/header.html', '/footer.html', '/site.css', '/header.js', '/frames.js', '/page.js', '/legacy.js', '/legacy.css', '/assets/favicon.png', '/assets/titlebar.png', '/assets/chrome-stripe.png']);
 const requestPolicy = createRequestPolicy({ development, trustedProxyIPs: process.env.TRUSTED_PROXY_IPS === undefined ? undefined : process.env.TRUSTED_PROXY_IPS.split(',').map(value => value.trim()).filter(Boolean) });
 const requestContexts = new WeakMap();
 const maxUploadBytes = process.env.FILES_MAX_UPLOAD_MB === undefined ? defaultMaxUploadBytes : Number(process.env.FILES_MAX_UPLOAD_MB) * 1024 * 1024;
@@ -69,6 +70,10 @@ async function handleRequest(request, server) {
     return new Response(null, { status: 308, headers: { Location: '/donate/' } });
   }
 
+  return serveStatic(request, pathname);
+}
+
+async function serveStatic(request, pathname) {
   const path = resolve(root, `.${pathname}${pathname.endsWith('/') ? 'index.html' : ''}`);
   if (!path.startsWith(root + sep) || pathname.includes('\0') || pathname.includes('\\') || pathname.split('/').some(part => part.startsWith('.'))) {
     return new Response('Forbidden', { status: 403 });
@@ -138,6 +143,7 @@ if (downloadPort !== undefined) {
         } catch {
           return new Response('Bad request', { status: 400 });
         }
+        if (chromePaths.has(pathname) || ['/assets/navigation/', '/assets/buttons/', '/assets/fonts/'].some(prefix => pathname.startsWith(prefix))) return serveStatic(request, pathname);
         if (!pathname.startsWith('/files/')) return new Response('Not found', { status: 404 });
         return fileHost.download(request, pathname, { attachmentOnly: true });
       }
