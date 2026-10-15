@@ -1,6 +1,6 @@
 # Website security review — updated 2026-10-15
 
-The application findings from the original 2026-10-14 review are fixed in this checkout and covered by regression tests. The 2026-10-15 follow-up found no new actionable security issue in the inspected application code. The latest dynamic-date and autofill changes remain local and undeployed. A live HTTPS Files response now includes HSTS, but this does not establish that every local change is deployed. Public XP/IE8 HTTP browsing remains read-only at the owner's explicit request; its lack of transport integrity is an accepted compatibility risk. The owner confirmed that the servers are configured correctly; their configuration was not independently audited.
+The application findings from the original 2026-10-14 review are fixed in this checkout and covered by regression tests. The latest 2026-10-15 application follow-up found no new unresolved security issue in the inspected folder-download and update-date changes. These changes remain local and undeployed. Earlier live checks found HSTS on an HTTPS Files response; this does not establish that every local change is deployed. Public XP/IE8 HTTP browsing remains read-only at the owner's explicit request; its lack of transport integrity is an accepted compatibility risk. The owner confirmed that the servers are configured correctly; their configuration was not independently audited.
 
 ## Scope and evidence
 
@@ -60,7 +60,7 @@ These are historical observations. The 2026-10-15 follow-up below records the ne
 
 ## Validation and deployment
 
-The original syntax/markup checks, build, and all 75 tests passed on Bun 1.4.3; the final 2026-10-15 suite contains 95 passing tests. Checks exercise trusted versus untrusted peers, HTTPS enforcement, HSTS, cancellation/abort recovery, concurrent storage reservations, capacity failure, and uncountable-tree rejection. Tests include the static-file disclosure regression and existing authentication, traversal, symlink/hardlink, root-pinning, escaping, upload-limit, cleanup, and download-listener protections. The original toolbar refresh glyph check used real IE8 with a self-hosted, licensed EOT subset; the obsolete bitmap fallback was removed.
+The original syntax/markup checks, build, and all 75 tests passed on Bun 1.4.3; the latest 2026-10-15 suite contains 107 passing tests. Checks exercise trusted versus untrusted peers, HTTPS enforcement, HSTS, cancellation/abort recovery, concurrent storage reservations, capacity failure, and uncountable-tree rejection. Tests include the static-file disclosure regression and existing authentication, traversal, symlink/hardlink, root-pinning, escaping, upload-limit, cleanup, and download-listener protections. The original toolbar refresh glyph check used real IE8 with a self-hosted, licensed EOT subset; the obsolete bitmap fallback was removed.
 
 Before deployment, use Bun 1.4.3 or newer, set the actual trusted home proxy peer IP and the intended private bind address, and review the default storage/concurrency limits. Run one application writer per file stash; quota reservations are process-local and assume the private tree is not concurrently modified by another writer. Proxy rate limits, service memory limits, and filesystem permissions remain part of the owner-managed server configuration. Deploy only after validating the applicable Caddy configuration, then repeat live checks. No deployment or server reconfiguration was performed in this review. The [Bun security advisory page](https://github.com/oven-sh/bun/security/advisories) is a vendor reference for runtime maintenance, not proof that the deployed runtime is free of vulnerabilities.
 
@@ -82,9 +82,9 @@ Supported raster images use an explicit MIME-type allowlist and file-signature c
 
 ### Dynamic update date
 
-The Files page calculates its displayed date from the latest modification or change timestamp across the restricted public file tree, including nested folders. It reuses the descriptor-relative traversal and excludes hidden entries, links, disallowed mounts, and non-regular files. Each date scan is bounded to 10,000 entries and 64 levels and runs within an existing page slot. Incomplete scans show `unavailable`; HEAD requests do not perform the scan. No timestamp journal or new persistent state is introduced. The date is filesystem metadata, not an audit log or file-authenticity guarantee.
+The Files page calculates its displayed date from the latest downloadable file modification timestamp across the restricted public file tree, including files in nested folders. Folder timestamps and file change timestamps are excluded: metadata-only changes or empty folder creation must not replace the newest file's date with today's date. It reuses the descriptor-relative traversal and excludes hidden entries, links, disallowed mounts, and non-regular files. Each date scan is bounded to 10,000 entries and 64 levels and runs within an existing page slot. Empty stashes and incomplete scans show `unavailable`; HEAD requests do not perform the scan. No timestamp journal or new persistent state is introduced. The date is filesystem metadata matching the file list, not an upload audit log or file-authenticity guarantee.
 
-Regression tests cover nested edits and deletions, uploads and folder creation without restarting the host, search-independent dates, exclusion of hidden file timestamps, and the unavailable result for an incomplete scan. Preview and checksum pages omit the stash-wide date.
+Regression tests use historical file dates alongside newer folder and metadata timestamps. They cover nested edits, falling back to the next newest file after deletion, uploads without restarting the host, empty folders, search-independent dates, exclusion of hidden file timestamps, and unavailable results for empty or incomplete scans. Preview and checksum pages omit the stash-wide date.
 
 ### Password-manager autofill and legacy frames
 
@@ -96,8 +96,36 @@ Opening Webmaster tools inside a frame now navigates the top-level tab to the cu
 
 Tests cover the framed-to-full-page destination, preservation of folder and search state, absence of token data in navigation, automatic opening and focus on the destination, no automatic credential submission, direct reading of an autofilled token, and avoiding focus changes during an upload. Chromium UI checks verified the transition and focused token. Proton's detection library recognized the visible password field in an isolated DOM check; this does not replace extension end-to-end testing. The owner confirmed the live standalone Proton menu, but all Proton Pass/Bitwarden combinations on Chrome and Firefox were not independently tested with signed-in extensions. See [Proton Pass guidance](https://proton.me/support/pass-browser-extension), [Bitwarden autofill guidance](https://bitwarden.com/help/auto-fill-browser/), and [Bitwarden linked custom fields](https://bitwarden.com/help/auto-fill-custom-fields/).
 
-### Latest validation and live status
+### Earlier autofill validation and live status
 
 `bun run check`, `bun run build`, `bun run test`, and `git diff --check` passed on Bun 1.4.3. The suite reported **95 passed, 0 failed**. The initial sandboxed test attempt could not bind local listeners; the complete suite passed with local networking permitted. Expected failed-upload fixtures log their simulated error while their cleanup and reservation tests pass.
 
 The 2026-10-15 live HTTPS `/files/` HEAD response returned 200 with HSTS, CSP, SAMEORIGIN, and `nosniff`. The public GET still served the older template without the dynamic update-date marker or the latest autofill help markup. The full-page webmaster navigation is verified locally and remains undeployed. These observations do not establish the deployed runtime version, proxy trust configuration, authenticated upload behavior, or the status of other routes. No deployment, real authenticated upload, or server reconfiguration was performed.
+
+## Folder ZIP and date correction follow-up — 2026-10-15
+
+Reviewed the final local diff in `file-host.js`, the new `zip.js` stream writer, the Files template, markup checks, and regression tests. Rechecked integration with the existing path restrictions, authentication and proxy policy, upload quotas, attachment headers, and response-slot cleanup. No new unresolved application security finding was identified in this scope. This follow-up did not repeat the earlier live checks, audit infrastructure, inspect download contents, or assess current vendor advisories.
+
+### Folder-only scope and filesystem boundaries
+
+`/files/<folder>/?download=1` returns only downloadable regular files directly in that folder. The root route has the same behavior. Subfolders are not traversed and search filters do not select archive contents. The UI states this explicitly and omits the archive action from preview and checksum pages.
+
+Planning and streaming both use the pinned directory descriptor and existing `O_NOFOLLOW`, device, mount, and single-link checks. Hidden names, symlinks, hard-linked files, and non-regular entries are excluded. Archive members contain only validated basenames; slash, backslash, control characters, and leading-dot paths remain prohibited. A downloadable filename containing a colon makes the archive request fail with 422 before streaming, preventing drive-qualified paths and alternate stream names from entering the ZIP. Individual file downloads remain available.
+
+Files are reopened through the restricted directory immediately before reading. Device, inode, size, link count, and nanosecond modification/change timestamps are checked against the planned version and checked again after reading. A removed, replaced, shortened, or edited file interrupts the archive rather than producing a successful partial listing or following a replacement link. Once response headers have been sent, such failures terminate the stream instead of returning a new HTTP status. This remains subject to the existing trusted-local-writer assumption; archives are not transactional filesystem snapshots or authenticity guarantees.
+
+### Resource and download protections
+
+Planning examines at most 10,000 immediate directory entries, including rejected/hidden entries in the budget. Exceeding that budget returns 413 before sending an archive rather than silently omitting files. Folders without eligible direct files return 404. HEAD returns attachment headers without enumerating files or reading their contents.
+
+File bytes stream in chunks of at most 64 KiB with backpressure, one file descriptor at a time. Only bounded entry metadata and ZIP central-directory records are retained. ZIPs use stored entries, with CRC-32 and ZIP64 sizes/offsets where needed; no archive compression, child process, temporary archive file, new production dependency, or persistent archive cache is introduced. The record format was checked against the [PKWARE ZIP specification](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT).
+
+Archive planning and response bodies occupy the existing download slots. Completion, error, body cancellation, and request abort close active file/directory descriptors and release the slot. Busy archives return 429 with `Retry-After`; browsing and checksum pools remain separate. Archive responses use attachment disposition, `application/zip`, `nosniff`, no-store caching, a sandbox CSP, and no referrer. Both application listeners support archive attachments; the separate download listener still rejects directory HTML and previews. The existing Caddy example routes folder URLs to the website listener; its proxy configuration was not changed or validated here.
+
+### Validation and remaining limits
+
+`bun run check`, `bun run build`, `bun run test`, and `git diff --check` passed on Bun 1.4.3. The final suite reported **107 passed, 0 failed**. Tests cover direct-only root/nested archive contents, original bytes and Unicode names, empty files/folders, hidden and linked files, unsafe extraction paths, traversal, root replacement, file edits and symlink replacement during streaming, cancellation/abort recovery, the entry budget, ZIP64 header generation for a sparse file over 4 GiB, and attachment/security headers on both listeners. Existing authentication, trusted-proxy, quota, and escaping regressions also pass.
+
+The independent `unzip -t` check passes for ordinary generated archives, including Unicode/binary members. A separate sparse ZIP64 fixture containing a 4 GiB + 1 byte file also passed the full independent CRC/integrity check. This large-file check verifies the ZIP writer without allocating a multi-gigabyte in-memory buffer; it is not a load test or a full HTTP transfer of that size.
+
+Chromium screenshots at the default desktop size and 375-pixel width verified the new action's appearance and wrapping; the narrow document had no horizontal overflow. No new browser script is required. A browser-session MutationObserver error appeared in the automation logs; no site source uses MutationObserver, so this was not attributed to this change. Real XP/IE8 extraction, all third-party unzip tools, deployed proxies, authenticated live operations, and live archive responses were not tested in this follow-up. No deployment was performed.

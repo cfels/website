@@ -41,6 +41,10 @@ each file has a **SHA-256** link to see its original checksum and download the f
 
 search looks through all folders and subfolders and shows the full path. it checks up to 10,000 entries, goes 64 folders deep and shows up to 1,000 matches. normal folder listings have the same entry and result limits. if there's more, the page tells you; you can still browse the folders.
 
+**Download all from this folder (ZIP)** downloads only files directly in the folder you're viewing, including at the stash root. subfolders and search filters are excluded. ZIPs stream without compression or temporary archive files, with ZIP64 for large files. planning checks up to 10,000 directory entries and shares the existing download concurrency limit. empty folders return 404; oversized directory listings return 413 rather than an incomplete ZIP. filenames containing `:` return 422 because they are unsafe archive extraction paths; those files can still be downloaded individually. if a file changes during the download, the archive is interrupted; retry it.
+
+the stash's **Last updated** date is the newest downloadable file's modification date across all folders, matching the file list. empty folders and metadata-only changes don't advance it. an empty stash or incomplete scan shows `unavailable`.
+
 downloads & random stuff. help yourself :p
 
 ## environment flags

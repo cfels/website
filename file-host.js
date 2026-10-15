@@ -2,6 +2,7 @@ import { constants } from 'node:fs';
 import { link, mkdir, open, opendir, readFile, statfs, unlink } from 'node:fs/promises';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { Readable } from 'node:stream';
+import { zipFiles } from './zip.js';
 
 const readFlags = constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK;
 const directoryFlags = readFlags | constants.O_DIRECTORY;
@@ -228,8 +229,7 @@ export async function createFileHost(rootPath, template, {
     if (depth >= maxFolderSizeDepth) return null;
     let size = 0;
     try {
-      const stat = await directory.stat();
-      let updated = Math.max(stat.mtimeMs, stat.ctimeMs);
+      let updated = null;
       for await (const { name } of await opendir(`/proc/self/fd/${directory.fd}`)) {
         if (budget.remaining-- <= 0) return null;
         if (!validName(name)) continue;
@@ -237,10 +237,10 @@ export async function createFileHost(rootPath, template, {
         try {
           entry = await openEntry(directory, name);
           if (!entry) continue;
-          const summary = entry.stat.isDirectory() ? await folderSummary(entry.handle, budget, depth + 1) : { size: entry.stat.size, updated: Math.max(entry.stat.mtimeMs, entry.stat.ctimeMs) };
+          const summary = entry.stat.isDirectory() ? await folderSummary(entry.handle, budget, depth + 1) : { size: entry.stat.size, updated: entry.stat.mtimeMs };
           if (summary === null) return null;
           size += summary.size;
-          updated = Math.max(updated, summary.updated);
+          if (summary.updated !== null) updated = updated === null ? summary.updated : Math.max(updated, summary.updated);
           if (!Number.isSafeInteger(size)) return null;
         } catch (error) {
           if (!hiddenErrors.has(error.code)) throw error;
@@ -260,7 +260,7 @@ export async function createFileHost(rootPath, template, {
     if (query.length > 255) return failure('Search is limited to 255 characters', 400);
     if (request.method === 'HEAD') return new Response(null, { headers: pageHeaders });
     const summary = await folderSummary(root, { remaining: maxFolderSizeEntries });
-    const updated = summary ? new Date(summary.updated).toISOString() : null;
+    const updated = summary?.updated != null ? new Date(summary.updated).toISOString() : null;
     const search = query.toLowerCase();
     const entries = [];
     const sizeBudget = { remaining: maxFolderSizeEntries };
@@ -318,6 +318,7 @@ export async function createFileHost(rootPath, template, {
       .on('#stash-updated', { element: element => {
         if (updated) element.setInnerContent(`Last updated: <time datetime="${updated}">${updated.slice(0, 10).replaceAll('-', '/')}</time>`, { html: true });
       } })
+      .on('#folder-download a', { element: element => element.setAttribute('href', `${fileURL(parts, true)}?download=1`) })
       .on('#file-search', { element: element => element.setAttribute('action', '/files/') })
       .on('#file-query', { element: element => element.setAttribute('value', escapeHTML(query)) })
       .on('#search-clear', { element: element => element.setAttribute('href', fileURL(parts, true)) })
@@ -393,7 +394,7 @@ export async function createFileHost(rootPath, template, {
       .on('.breadcrumb', { element: element => element.setInnerContent(`<a href="/home.html">Home</a> &gt; <a href="${fileURL(parts.slice(0, -1), true)}">Files</a> &gt; ${escapeHTML(name)}`, { html: true }) })
       .on('#folder-path', { element: element => element.setInnerContent(`C:\\files\\${parts.join('\\')}`) })
       .on('.personal-copy', { element: element => element.setInnerContent(type ? 'View the image below, or download the original.' : 'Read the notes below, or download the file.') })
-      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #stash-updated, #owner-tools, #file-checksum', { element: element => element.remove() })
+      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #stash-updated, #folder-download, #owner-tools, #file-checksum', { element: element => element.remove() })
       .on('#file-viewer', { element: element => {
         element.removeAttribute('hidden');
         element.setAttribute('aria-label', type ? 'Image file viewer' : 'Text file viewer');
@@ -450,7 +451,7 @@ export async function createFileHost(rootPath, template, {
       .on('.breadcrumb', { element: element => element.setInnerContent(`<a href="/home.html">Home</a> &gt; <a href="${fileURL(parts.slice(0, -1), true)}">Files</a> &gt; ${escapeHTML(name)}`, { html: true }) })
       .on('#folder-path', { element: element => element.setInnerContent(`C:\\files\\${parts.join('\\')}`) })
       .on('.personal-copy', { element: element => element.setInnerContent('Check your download against the original file :p') })
-      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #stash-updated, #owner-tools, #file-viewer', { element: element => element.remove() })
+      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #stash-updated, #folder-download, #owner-tools, #file-viewer', { element: element => element.remove() })
       .on('#file-checksum', { element: element => element.removeAttribute('hidden') })
       .on('#checksum-back', { element: element => element.setAttribute('href', fileURL(parts.slice(0, -1), true)) })
       .on('#checksum-download', { element: element => element.setAttribute('href', fileURL(parts)) })
@@ -458,6 +459,87 @@ export async function createFileHost(rootPath, template, {
       .on('#checksum-view', { element: element => element.setAttribute('href', `${fileURL(parts)}?view=1`) })
       .on('#checksum-value', { element: element => element.setInnerContent(digest) })
       .transform(new Response(template, { headers: pageHeaders }));
+  }
+
+  async function folderArchive(request, directory, parts) {
+    const name = `${parts.at(-1) || 'files'}.zip`;
+    const headers = {
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="files.zip"; filename*=UTF-8''${encodeName(name)}`,
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "sandbox; default-src 'none'; frame-ancestors 'none'",
+      'Referrer-Policy': 'no-referrer'
+    };
+    if (request.method === 'HEAD') return new Response(null, { headers });
+    const entries = [];
+    let remaining = maxFolderSizeEntries;
+    let total = 0;
+    for await (const { name } of await opendir(`/proc/self/fd/${directory.fd}`)) {
+      if (request.signal.aborted) return new Response(null, { status: 499 });
+      if (remaining-- <= 0) return failure('Too many entries to download together; download files individually', 413);
+      if (!validName(name)) continue;
+      let entry;
+      try {
+        entry = await openEntry(directory, name);
+        if (!entry || !entry.stat.isFile()) continue;
+        if (name.includes(':')) return failure('A filename is unsafe to extract from a ZIP; download files individually', 422);
+        const version = await entry.handle.stat({ bigint: true });
+        total += Number(version.size);
+        if (!Number.isSafeInteger(total)) return failure('Folder is too large to archive', 413);
+        entries.push({ name, stat: { size: Number(version.size), mtime: version.mtime }, version });
+      } catch (error) {
+        if (!hiddenErrors.has(error.code)) throw error;
+      } finally {
+        if (entry) await entry.handle.close();
+      }
+    }
+    if (!entries.length) return failure('No files directly in this folder to download', 404);
+    entries.sort((a, b) => a.name.localeCompare(b.name, 'en'));
+    async function* readFile(entry) {
+      const opened = await openEntry(directory, entry.name);
+      if (!opened) throw new Error('File is no longer available');
+      const unchanged = stat => ['dev', 'ino', 'size', 'mtimeNs', 'ctimeNs'].every(key => stat[key] === entry.version[key]) && stat.isFile() && stat.nlink === 1n;
+      try {
+        if (!unchanged(await opened.handle.stat({ bigint: true }))) throw new Error('File changed before creating the archive');
+        let position = 0;
+        while (position < entry.stat.size) {
+          if (request.signal.aborted) throw new Error('Archive download cancelled');
+          const buffer = Buffer.alloc(Math.min(64 * 1024, entry.stat.size - position));
+          const { bytesRead } = await opened.handle.read(buffer, 0, buffer.length, position);
+          if (!bytesRead) throw new Error('File changed while creating the archive');
+          position += bytesRead;
+          yield buffer.subarray(0, bytesRead);
+        }
+        if (!unchanged(await opened.handle.stat({ bigint: true }))) throw new Error('File changed while creating the archive');
+      } finally {
+        await opened.handle.close();
+      }
+    }
+    const iterator = zipFiles(entries, readFile);
+    let closed = false;
+    async function close() {
+      if (closed) return;
+      closed = true;
+      try { await iterator.return(); }
+      finally { if (directory !== root) await directory.close(); }
+    }
+    const body = new ReadableStream({
+      async pull(controller) {
+        try {
+          const { value, done } = await iterator.next();
+          if (done) {
+            await close();
+            controller.close();
+          } else controller.enqueue(value);
+        } catch (error) {
+          await close();
+          controller.error(error);
+        }
+      },
+      cancel: close
+    }, { highWaterMark: 0 });
+    return new Response(body, { headers });
   }
 
   async function download(request, pathname, { attachmentOnly = false } = {}) {
@@ -474,7 +556,12 @@ export async function createFileHost(rootPath, template, {
       if (!entry) return failure('Not found', 404);
       const { handle, stat } = entry;
       if (stat.isDirectory()) {
-        if (!pathname.endsWith('/')) return new Response(null, { status: 308, headers: { Location: fileURL(parts, true) } });
+        if (!pathname.endsWith('/')) return new Response(null, { status: 308, headers: { Location: fileURL(parts, true) + (query.get('download') === '1' ? '?download=1' : '') } });
+        if (query.get('download') === '1') return await boundedResponse(downloadSlots, request, async () => {
+          const response = await folderArchive(request, handle, parts);
+          streaming = response.status === 200 && response.body !== null;
+          return response;
+        });
         if (attachmentOnly) return failure('Not found', 404);
         return await boundedResponse(pageSlots, request, () => directoryPage(request, handle, parts));
       }

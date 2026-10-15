@@ -20,7 +20,7 @@ for (const name of files.filter(name => name.endsWith('.html'))) {
         const localPath = value.split('#')[0];
         const target = value.startsWith('/') ? resolve(root, localPath.slice(1)) : resolve(dirname(path), localPath);
         const documentPath = value.endsWith('/') ? resolve(target, 'index.html') : target;
-        if (!files.includes(relative(root, documentPath)) && localPath !== '/files/') errors.push(`${name}: missing ${value}`);
+        if (!files.includes(relative(root, documentPath)) && localPath.split('?')[0] !== '/files/') errors.push(`${name}: missing ${value}`);
       }
       if (element.tagName === 'frame') frameNames.add(element.getAttribute('name'));
       const target = element.getAttribute('target');
@@ -40,7 +40,7 @@ for (const target of frameTargets) {
 const index = await Bun.file(resolve(root, 'index.html')).text();
 if (!index.includes('<frameset ') || !index.includes('HTML 4.01 Frameset')) errors.push('Missing legacy frameset');
 
-for (const script of ['../server.js', '../file-host.js', '../request-policy.js', 'files.js', 'frames.js', 'header.js', 'page.js', 'legacy.js', 'service-worker.js', '../scripts/build.js', '../scripts/check.js']) {
+for (const script of ['../server.js', '../file-host.js', '../zip.js', '../request-policy.js', 'files.js', 'frames.js', 'header.js', 'page.js', 'legacy.js', 'service-worker.js', '../scripts/build.js', '../scripts/check.js']) {
   try {
     new Bun.Transpiler({ loader: 'js' }).scan(await Bun.file(resolve(root, script)).text());
   } catch (error) {

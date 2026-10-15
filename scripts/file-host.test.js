@@ -133,6 +133,198 @@ async function observeFileReads(path, action) {
   finally { reads.mockRestore(); }
 }
 
+function readZip(bytes) {
+  const end = bytes.length - 22;
+  expect(bytes.readUInt32LE(end)).toBe(0x06054b50);
+  const count = bytes.readUInt16LE(end + 10);
+  let position = bytes.readUInt32LE(end + 16);
+  const files = new Map();
+  for (let index = 0; index < count; index++) {
+    expect(bytes.readUInt32LE(position)).toBe(0x02014b50);
+    const size = bytes.readUInt32LE(position + 24);
+    const nameLength = bytes.readUInt16LE(position + 28);
+    const extraLength = bytes.readUInt16LE(position + 30);
+    const commentLength = bytes.readUInt16LE(position + 32);
+    const local = bytes.readUInt32LE(position + 42);
+    const name = bytes.toString('utf8', position + 46, position + 46 + nameLength);
+    expect(bytes.readUInt32LE(local)).toBe(0x04034b50);
+    const start = local + 30 + bytes.readUInt16LE(local + 26) + bytes.readUInt16LE(local + 28);
+    files.set(name, bytes.subarray(start, start + size));
+    position += 46 + nameLength + extraLength + commentLength;
+  }
+  return files;
+}
+
+test('folder ZIPs contain only direct public files with original names and bytes', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    await mkdir(resolve(path, 'nested/deeper'), { recursive: true });
+    await writeFile(resolve(path, 'root.txt'), 'root only');
+    await writeFile(resolve(path, 'nested', '空 #%.txt'), 'nested ☆');
+    await writeFile(resolve(path, 'nested', 'empty.txt'), '');
+    await writeFile(resolve(path, 'nested/deeper/secret.txt'), 'excluded child');
+    await writeFile(resolve(path, 'nested/.hidden'), 'excluded hidden');
+    await symlink(resolve(path, 'root.txt'), resolve(path, 'nested/link.txt'));
+    await link(resolve(path, 'root.txt'), resolve(path, 'nested/hardlink.txt'));
+    const rootArchive = await isolated.download(new Request(origin + '/files/?download=1&q=missing'), '/files/');
+    expect(rootArchive.status).toBe(404);
+    await rm(resolve(path, 'nested/hardlink.txt'));
+    const rootResponse = await isolated.download(new Request(origin + '/files/?download=1&q=missing'), '/files/');
+    const rootFiles = readZip(Buffer.from(await rootResponse.arrayBuffer()));
+    expect([...rootFiles.keys()]).toEqual(['root.txt']);
+    expect(rootFiles.get('root.txt').toString()).toBe('root only');
+    const response = await isolated.download(new Request(origin + '/files/nested/?download=1'), '/files/nested/');
+    expect(response.headers.get('content-type')).toBe('application/zip');
+    expect(response.headers.get('content-disposition')).toContain("filename*=UTF-8''nested.zip");
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
+    expect(response.headers.get('content-security-policy')).toContain('sandbox');
+    const files = readZip(Buffer.from(await response.arrayBuffer()));
+    expect([...files.keys()].sort()).toEqual(['empty.txt', '空 #%.txt']);
+    expect(files.get('空 #%.txt').toString()).toBe('nested ☆');
+    expect(files.get('empty.txt').length).toBe(0);
+    const page = await (await isolated.download(new Request(origin + '/files/nested/?q=root'), '/files/nested/')).text();
+    expect(page).toContain('href="/files/nested/?download=1"');
+    for (const query of ['view=1', 'sha256=1']) {
+      const preview = await (await isolated.download(new Request(origin + '/files/root.txt?' + query), '/files/root.txt')).text();
+      expect(preview).not.toContain('id="folder-download"');
+    }
+  });
+});
+
+test.skipIf(!Bun.which('unzip'))('folder ZIPs pass an independent extractor integrity check', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    await writeFile(resolve(path, 'hello.txt'), 'hello');
+    await writeFile(resolve(path, '空 #%.txt'), Buffer.from([0, 255, 1, 2]));
+    const response = await isolated.download(new Request(origin + '/files/?download=1'), '/files/');
+    const archive = resolve(fixture, 'interoperability.zip');
+    await writeFile(archive, Buffer.from(await response.arrayBuffer()));
+    const result = Bun.spawnSync(['unzip', '-t', archive]);
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.toString()).toContain('No errors detected');
+  });
+});
+
+test('folder archives preserve path restrictions and download-only routing', async () => {
+  for (const path of ['/files/.secret/?download=1', '/files/%2e%2e%2f?download=1']) {
+    expect((await fetch(origin + path)).status).toBe(403);
+  }
+  for (const name of ['outside-directory', 'inside-link', 'outside-hardlink']) {
+    expect((await fetch(origin + '/files/' + name + '/?download=1')).status).toBe(404);
+  }
+  expect((await fetch(origin + '/files/?download=1', { method: 'POST' })).status).toBe(405);
+  const archive = await host.download(new Request(origin + '/files/nested/?download=1'), '/files/nested/', { attachmentOnly: true });
+  expect(archive.status).toBe(200);
+  await archive.arrayBuffer();
+  const head = await fetch(origin + '/files/nested/?download=1', { method: 'HEAD' });
+  expect(head.status).toBe(200);
+  expect(head.headers.get('content-type')).toBe('application/zip');
+  expect(await head.text()).toBe('');
+  const redirect = await fetch(origin + '/files/nested?download=1', { redirect: 'manual' });
+  expect(redirect.status).toBe(308);
+  expect(redirect.headers.get('location')).toBe('/files/nested/?download=1');
+});
+
+test('empty folders and unsafe ZIP names fail without publishing a partial archive', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    await mkdir(resolve(path, 'child'));
+    await writeFile(resolve(path, 'child/nested.txt'), 'excluded');
+    expect((await isolated.download(new Request(origin + '/files/?download=1'), '/files/')).status).toBe(404);
+    await writeFile(resolve(path, 'C:unsafe.txt'), 'unsafe extraction path');
+    expect((await isolated.download(new Request(origin + '/files/?download=1'), '/files/')).status).toBe(422);
+  });
+});
+
+test('archive cancellation and abort release shared download capacity while browsing remains available', async () => {
+  await isolatedHost({ maxConcurrentDownloads: 1 }, async (isolated, path) => {
+    await mkdir(resolve(path, 'nested'));
+    await writeFile(resolve(path, 'nested/large.bin'), Buffer.alloc(1024 * 1024));
+    const url = origin + '/files/nested/?download=1';
+    const archive = await isolated.download(new Request(url), '/files/nested/');
+    expect((await isolated.download(new Request(url), '/files/nested/')).status).toBe(429);
+    const page = await isolated.download(new Request(origin + '/files/nested/'), '/files/nested/');
+    expect(page.status).toBe(200);
+    await page.text();
+    await archive.body.cancel();
+    const abort = new AbortController();
+    const interrupted = await isolated.download(new Request(url, { signal: abort.signal }), '/files/nested/');
+    const reader = interrupted.body.getReader();
+    await reader.read();
+    abort.abort();
+    await reader.cancel();
+    const recovered = await isolated.download(new Request(url), '/files/nested/');
+    expect(recovered.status).toBe(200);
+    await recovered.arrayBuffer();
+    const alreadyAborted = new AbortController();
+    alreadyAborted.abort();
+    expect((await isolated.download(new Request(url, { signal: alreadyAborted.signal }), '/files/nested/')).status).toBe(499);
+  });
+});
+
+test('files changed during an archive interrupt the download and release capacity', async () => {
+  await isolatedHost({ maxConcurrentDownloads: 1 }, async (isolated, path) => {
+    const file = resolve(path, 'changing.txt');
+    await writeFile(file, 'original');
+    await observeFileReads(file, async (reads, originalRead) => {
+      reads.mockImplementationOnce(async function (...args) {
+        await writeFile(file, 'changed!');
+        return originalRead.apply(this, args);
+      });
+      const response = await isolated.download(new Request(origin + '/files/?download=1'), '/files/');
+      await expect(response.arrayBuffer()).rejects.toThrow('File changed');
+    });
+    const recovered = await isolated.download(new Request(origin + '/files/?download=1'), '/files/');
+    expect(recovered.status).toBe(200);
+    await recovered.arrayBuffer();
+  });
+});
+
+test('replacing a planned archive file with a symlink cannot disclose its target', async () => {
+  await isolatedHost({ maxConcurrentDownloads: 1 }, async (isolated, path) => {
+    const file = resolve(path, 'replace.txt');
+    await writeFile(file, 'public download');
+    const response = await isolated.download(new Request(origin + '/files/?download=1'), '/files/');
+    await rm(file);
+    await symlink(resolve(fixture, 'private.txt'), file);
+    await expect(response.arrayBuffer()).rejects.toThrow();
+    await rm(file);
+    await writeFile(file, 'public replacement');
+    const recovered = await isolated.download(new Request(origin + '/files/?download=1'), '/files/');
+    const files = readZip(Buffer.from(await recovered.arrayBuffer()));
+    expect(files.get('replace.txt').toString()).toBe('public replacement');
+  });
+});
+
+test('files larger than 4 GiB start with ZIP64 sizes and can be cancelled without buffering the file', async () => {
+  await isolatedHost({ maxConcurrentDownloads: 1 }, async (isolated, path) => {
+    const file = await open(resolve(path, 'large.bin'), 'w');
+    try { await file.truncate(4 * 1024 * 1024 * 1024 + 1); }
+    finally { await file.close(); }
+    const response = await isolated.download(new Request(origin + '/files/?download=1'), '/files/');
+    const reader = response.body.getReader();
+    const { value } = await reader.read();
+    const header = Buffer.from(value);
+    expect(header.readUInt16LE(4)).toBe(45);
+    expect(header.readUInt32LE(22)).toBe(0xffffffff);
+    const extra = 30 + header.readUInt16LE(26);
+    expect(header.readUInt16LE(extra)).toBe(1);
+    expect(header.readBigUInt64LE(extra + 4)).toBe(4294967297n);
+    await reader.cancel();
+    const head = await isolated.download(new Request(origin + '/files/?download=1', { method: 'HEAD' }), '/files/');
+    expect(head.status).toBe(200);
+  });
+});
+
+test('archive planning is bounded even when a folder contains too many hidden entries', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    for (let start = 0; start < 10001; start += 100) {
+      await Promise.all(Array.from({ length: Math.min(100, 10001 - start) }, (_, index) => writeFile(resolve(path, `.hidden-${start + index}`), '')));
+    }
+    const response = await isolated.download(new Request(origin + '/files/?download=1'), '/files/');
+    expect(response.status).toBe(413);
+    expect(await response.text()).toContain('Too many entries');
+  });
+});
+
 test('owner actions and token fields fail closed without verified transport even with forged headers', async () => {
   for (const policy of [undefined, () => false, async () => false]) {
     await isolatedHost({ uploadToken: token, isSecureRequest: policy }, async restricted => {
@@ -274,47 +466,56 @@ test('lists folders and files, escapes names, and excludes hidden entries and li
   expect(nested).toContain('href="/files/nested/">Refresh');
 });
 
-test('the stash update date follows nested edits and deletions independently of folders and search filters', async () => {
+test('the stash update date follows the newest file modification, ignoring folder and metadata changes', async () => {
   await isolatedHost({}, async (isolated, path) => {
     await mkdir(resolve(path, 'nested'));
     const file = resolve(path, 'nested/notes.txt');
     await writeFile(file, 'first version');
-    await utimes(file, new Date('2090-01-02T03:04:05Z'), new Date('2090-01-02T03:04:05Z'));
+    await utimes(file, new Date('2001-01-02T03:04:05Z'), new Date('2001-01-02T03:04:05Z'));
+    const olderFile = resolve(path, 'older.txt');
+    await writeFile(olderFile, 'older download');
+    await utimes(olderFile, new Date('2000-01-01T00:00:00Z'), new Date('2000-01-01T00:00:00Z'));
     await writeFile(resolve(path, 'nested/.hidden'), 'private');
     await utimes(resolve(path, 'nested/.hidden'), new Date('2100-01-01'), new Date('2100-01-01'));
+    await mkdir(resolve(path, 'empty'));
+    for (const folder of [path, resolve(path, 'nested'), resolve(path, 'empty')]) {
+      await utimes(folder, new Date('2100-01-01'), new Date('2100-01-01'));
+    }
 
     async function page(url) {
       return (await isolated.download(new Request(origin + url), new URL(origin + url).pathname)).text();
     }
 
     for (const url of ['/files/', '/files/nested/', '/files/?q=no-match']) {
-      expect(await page(url)).toContain('Last updated: <time datetime="2090-01-02T03:04:05.000Z">2090/01/02</time>');
+      expect(await page(url)).toContain('Last updated: <time datetime="2001-01-02T03:04:05.000Z">2001/01/02</time>');
     }
     await writeFile(file, 'edited version');
-    await utimes(file, new Date('2091-02-03T04:05:06Z'), new Date('2091-02-03T04:05:06Z'));
-    expect(await page('/files/')).toContain('Last updated: <time datetime="2091-02-03T04:05:06.000Z">2091/02/03</time>');
+    await utimes(file, new Date('2002-02-03T04:05:06Z'), new Date('2002-02-03T04:05:06Z'));
+    expect(await page('/files/')).toContain('Last updated: <time datetime="2002-02-03T04:05:06.000Z">2002/02/03</time>');
     expect(await page('/files/nested/notes.txt?view=1')).not.toContain('id="stash-updated"');
     expect(await page('/files/nested/notes.txt?sha256=1')).not.toContain('id="stash-updated"');
 
     await rm(file);
-    const afterDeletion = await page('/files/');
-    expect(afterDeletion).toContain(`>${new Date().toISOString().slice(0, 10).replaceAll('-', '/')}</time>`);
-    expect(afterDeletion).not.toContain('2091/02/03');
+    expect(await page('/files/')).toContain('Last updated: <time datetime="2000-01-01T00:00:00.000Z">2000/01/01</time>');
+    await rm(olderFile);
+    expect(await page('/files/')).toContain('Last updated: unavailable');
   });
 });
 
-test('the stash update date reflects uploads and folder creation without restarting the host', async () => {
+test('the stash update date reflects uploads without restarting the host and ignores empty folders', async () => {
   await isolatedHost({ ...secureFixture, uploadToken: token }, async (isolated, path) => {
     const initial = await (await isolated.download(new Request(origin + '/files/'), '/files/')).text();
-    expect(initial).toContain('Last updated: <time datetime="');
+    expect(initial).toContain('Last updated: unavailable');
     expect((await isolated.createFolder(new Request(origin + '/api/files/mkdir', {
       method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-File-Name': 'nested' }
     }))).status).toBe(201);
+    const emptyFolder = await (await isolated.download(new Request(origin + '/files/'), '/files/')).text();
+    expect(emptyFolder).toContain('Last updated: unavailable');
     expect((await isolated.upload(localUpload('new.txt', 'uploaded', { 'X-File-Folder': 'nested' }))).status).toBe(201);
     const uploaded = await Bun.file(resolve(path, 'nested/new.txt')).stat();
     const page = await (await isolated.download(new Request(origin + '/files/'), '/files/')).text();
     const timestamp = page.match(/id="stash-updated"[^>]*>Last updated: <time datetime="([^"]+)"/)[1];
-    expect(Date.parse(timestamp)).toBeGreaterThanOrEqual(Math.floor(uploaded.mtimeMs));
+    expect(timestamp).toBe(uploaded.mtime.toISOString());
     expect(page).toContain(`>${new Date().toISOString().slice(0, 10).replaceAll('-', '/')}</time>`);
   });
 });
@@ -1259,6 +1460,10 @@ test('replacing the files path with a symlink cannot redirect reads or writes', 
     await rename(pinnedPath, resolve(fixture, 'original-directory'));
     await symlink(fixture, pinnedPath);
     expect(await (await pinned.download(new Request(origin + '/files/original.txt'), '/files/original.txt')).text()).toBe('pinned original');
+    const archive = await pinned.download(new Request(origin + '/files/?download=1'), '/files/');
+    const archivedFiles = readZip(Buffer.from(await archive.arrayBuffer()));
+    expect([...archivedFiles.keys()]).toEqual(['original.txt']);
+    expect(archivedFiles.get('original.txt').toString()).toBe('pinned original');
     expect((await pinned.download(new Request(origin + '/files/private.txt'), '/files/private.txt')).status).toBe(404);
     const search = await (await pinned.download(new Request(origin + '/files/?q=original'), '/files/')).text();
     expect(search).toContain('href="/files/original.txt"');

@@ -45,6 +45,19 @@ test('download listener does not serve website pages, previews, or owner actions
   expect((await fetch(downloadOrigin + '/files/%00')).status).toBe(403);
 });
 
+test('both listeners serve folder archives as attachments without exposing directory pages on the download listener', async () => {
+  for (const base of [origin, downloadOrigin]) {
+    const response = await fetch(base + '/files/?download=1', { method: 'HEAD', headers: { 'X-Forwarded-Proto': 'https' } });
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('application/zip');
+    expect(response.headers.get('content-disposition')).toContain('attachment;');
+    expect(response.headers.get('x-frame-options')).toBe('DENY');
+    expect(response.headers.get('strict-transport-security')).toBe('max-age=31536000');
+    expect(await response.text()).toBe('');
+  }
+  expect((await fetch(downloadOrigin + '/files/')).status).toBe(404);
+});
+
 afterAll(async () => {
   if (server && server.exitCode === null) {
     const stopped = once(server, 'exit');
@@ -160,7 +173,7 @@ test('static serving denies hidden files and symlinks outside its public directo
   try {
     await mkdir(resolve(fixture, 'files'));
     await mkdir(resolve(fixture, 'build/assets'), { recursive: true });
-    for (const file of ['server.js', 'file-host.js', 'request-policy.js', 'build/index.html', 'build/files.html', 'build/404.html']) {
+    for (const file of ['server.js', 'file-host.js', 'zip.js', 'request-policy.js', 'build/index.html', 'build/files.html', 'build/404.html']) {
       await copyFile(resolve(import.meta.dir, '..', file), resolve(fixture, file));
     }
     await writeFile(resolve(fixture, 'build/.env'), 'test-only hidden configuration');
@@ -234,7 +247,7 @@ test('production errors do not expose source code even when NODE_ENV enables dev
   try {
     await mkdir(resolve(fixture, 'files'));
     await mkdir(resolve(fixture, 'build'));
-    for (const file of ['server.js', 'file-host.js', 'request-policy.js', 'build/index.html', 'build/files.html']) {
+    for (const file of ['server.js', 'file-host.js', 'zip.js', 'request-policy.js', 'build/index.html', 'build/files.html']) {
       await copyFile(resolve(import.meta.dir, '..', file), resolve(fixture, file));
     }
     const environment = { ...process.env, NODE_ENV: 'development', HOST: '127.0.0.1', PORT: '0', FILES_UPLOAD_TOKEN: '' };
