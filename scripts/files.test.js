@@ -11,6 +11,11 @@ class Control {
   value = '';
   textContent = '';
   dataset = {};
+  focusCount = 0;
+
+  focus() {
+    this.focusCount++;
+  }
 
   addEventListener(name, listener) {
     this.listeners.set(name, listener);
@@ -21,7 +26,7 @@ class Control {
   }
 }
 
-function setup(files, validToken = true) {
+function setup(files, validToken = true, { framed = false, url = 'https://files.example/files/' } = {}) {
   const ids = ['owner-tools', 'owner-token', 'owner-token-form', 'upload-form', 'folder-form', 'folder-name', 'upload-file', 'owner-status', 'owner-refresh', 'upload-progress', 'upload-cancel'];
   const elements = Object.fromEntries(ids.map(id => [id, new Control()]));
   const controls = [elements['owner-token'], elements['folder-name'], elements['upload-file'], new Control(), new Control()];
@@ -35,6 +40,10 @@ function setup(files, validToken = true) {
   for (const id of ['owner-refresh', 'upload-progress', 'upload-cancel']) elements[id].hidden = true;
   const requests = [];
   const folderRequests = [];
+  const navigations = [];
+  const window = { location: new URL(url) };
+  window.self = window;
+  window.top = framed ? { location: { assign: value => navigations.push(value) } } : window;
 
   class UploadRequest extends Control {
     upload = new Control();
@@ -67,6 +76,8 @@ function setup(files, validToken = true) {
 
   runInNewContext(source, {
     document: { querySelector: selector => elements[selector.slice(1)] },
+    window,
+    URL,
     XMLHttpRequest: UploadRequest,
     TypeError,
     Error,
@@ -75,7 +86,7 @@ function setup(files, validToken = true) {
       return new Response('Created', { status: 201 });
     }
   });
-  return { elements, controls, requests, folderRequests, submit: () => elements['upload-form'].dispatch('submit', { preventDefault() {} }) };
+  return { elements, controls, requests, folderRequests, navigations, submit: () => elements['upload-form'].dispatch('submit', { preventDefault() {} }) };
 }
 
 test('multiple files upload sequentially to the current folder with progress and one token entry', async () => {
@@ -197,6 +208,55 @@ test('empty files upload without invalid progress values', async () => {
   requests[0].respond(201);
   await completion;
   expect(elements['owner-status'].textContent).toBe('1 of 1 files uploaded ☆');
+});
+
+test('opening webmaster tools focuses the token for autofill without clearing or submitting it', () => {
+  const { elements, requests, folderRequests } = setup([]);
+  const tools = elements['owner-tools'];
+  const field = elements['owner-token'];
+  tools.open = false;
+  tools.dispatch('toggle');
+  expect(field.focusCount).toBe(0);
+  tools.open = true;
+  tools.dispatch('toggle');
+  expect(field.focusCount).toBe(1);
+  expect(field.value).toBe(token);
+  tools.open = false;
+  tools.dispatch('toggle');
+  expect(field.focusCount).toBe(1);
+  expect(requests).toHaveLength(0);
+  expect(folderRequests).toHaveLength(0);
+});
+
+test('opening webmaster tools during an upload does not focus a disabled token field', async () => {
+  const { elements, requests, submit } = setup([{ name: 'notes.txt', size: 1 }]);
+  const completion = submit();
+  elements['owner-tools'].open = true;
+  elements['owner-tools'].dispatch('toggle');
+  expect(elements['owner-token'].focusCount).toBe(0);
+  requests[0].respond(201);
+  await completion;
+});
+
+test('opening framed webmaster tools navigates to the same folder in the full page without carrying credentials', () => {
+  const { elements, navigations, requests, folderRequests } = setup([], true, {
+    framed: true, url: 'https://files.example/files/nested%20folder/?q=notes#old-section'
+  });
+  elements['owner-tools'].open = true;
+  elements['owner-tools'].dispatch('toggle');
+  expect(navigations).toEqual(['https://files.example/files/nested%20folder/?q=notes#owner-tools']);
+  expect(navigations[0]).not.toContain(token);
+  expect(elements['owner-token'].focusCount).toBe(0);
+  expect(requests).toHaveLength(0);
+  expect(folderRequests).toHaveLength(0);
+});
+
+test('the full-page webmaster link opens the tools and focuses the token without another navigation', () => {
+  const { elements, navigations } = setup([], true, { url: 'https://files.example/files/nested%20folder/#owner-tools' });
+  expect(elements['owner-tools'].open).toBe(true);
+  elements['owner-tools'].dispatch('toggle');
+  expect(elements['owner-token'].focusCount).toBe(1);
+  expect(navigations).toHaveLength(0);
 });
 
 test('submitting the token-only form prevents navigation and never sends a credential request', async () => {

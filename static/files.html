@@ -22,6 +22,7 @@
     <article class="document-paper file-browser">
       <h2 id="folder-path">C:\files\</h2>
       <p class="personal-copy">Stuff I've put here for you to download. Help yourself :p</p>
+      <p id="stash-updated" class="small-note">Last updated: unavailable</p>
       <p id="folder-size-note" class="small-note">Folder sizes include downloadable files in subfolders.</p>
       <form id="file-search" class="file-search" method="get" action="/files/" role="search">
         <label for="file-query">Search all files/folders</label>
@@ -53,8 +54,9 @@
       <details id="owner-tools" class="owner-upload" data-folder="">
         <summary>Webmaster tools</summary>
         <form id="owner-token-form" name="login" action="/api/files/upload" method="post" autocomplete="on" aria-label="Owner sign in">
-          <input name="username" type="hidden" autocomplete="username" value="owner">
-          <p><label for="owner-token">Upload token</label><input id="owner-token" name="password" type="password" required minlength="32" autocomplete="current-password" autocapitalize="none" spellcheck="false"></p>
+          <input id="owner-username" name="username" type="hidden" autocomplete="username" value="owner">
+          <p><label for="owner-token">Upload token</label><input id="owner-token" name="password" type="password" required minlength="32" autocomplete="current-password" autocapitalize="none" spellcheck="false" aria-describedby="owner-token-help"></p>
+          <p id="owner-token-help" class="small-note">Autofill with your saved owner login, or paste your upload token.</p>
           <button type="submit">Use token</button>
         </form>
         <form id="folder-form">

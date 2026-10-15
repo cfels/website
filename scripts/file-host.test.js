@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, spyOn, test } from 'bun:test';
-import { link, mkdir, mkdtemp, open, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { link, mkdir, mkdtemp, open, readdir, rename, rm, symlink, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -272,6 +272,51 @@ test('lists folders and files, escapes names, and excludes hidden entries and li
   expect(nested).toContain('id="folder-form"');
   expect(nested).toContain('data-folder="nested"');
   expect(nested).toContain('href="/files/nested/">Refresh');
+});
+
+test('the stash update date follows nested edits and deletions independently of folders and search filters', async () => {
+  await isolatedHost({}, async (isolated, path) => {
+    await mkdir(resolve(path, 'nested'));
+    const file = resolve(path, 'nested/notes.txt');
+    await writeFile(file, 'first version');
+    await utimes(file, new Date('2090-01-02T03:04:05Z'), new Date('2090-01-02T03:04:05Z'));
+    await writeFile(resolve(path, 'nested/.hidden'), 'private');
+    await utimes(resolve(path, 'nested/.hidden'), new Date('2100-01-01'), new Date('2100-01-01'));
+
+    async function page(url) {
+      return (await isolated.download(new Request(origin + url), new URL(origin + url).pathname)).text();
+    }
+
+    for (const url of ['/files/', '/files/nested/', '/files/?q=no-match']) {
+      expect(await page(url)).toContain('Last updated: <time datetime="2090-01-02T03:04:05.000Z">2090/01/02</time>');
+    }
+    await writeFile(file, 'edited version');
+    await utimes(file, new Date('2091-02-03T04:05:06Z'), new Date('2091-02-03T04:05:06Z'));
+    expect(await page('/files/')).toContain('Last updated: <time datetime="2091-02-03T04:05:06.000Z">2091/02/03</time>');
+    expect(await page('/files/nested/notes.txt?view=1')).not.toContain('id="stash-updated"');
+    expect(await page('/files/nested/notes.txt?sha256=1')).not.toContain('id="stash-updated"');
+
+    await rm(file);
+    const afterDeletion = await page('/files/');
+    expect(afterDeletion).toContain(`>${new Date().toISOString().slice(0, 10).replaceAll('-', '/')}</time>`);
+    expect(afterDeletion).not.toContain('2091/02/03');
+  });
+});
+
+test('the stash update date reflects uploads and folder creation without restarting the host', async () => {
+  await isolatedHost({ ...secureFixture, uploadToken: token }, async (isolated, path) => {
+    const initial = await (await isolated.download(new Request(origin + '/files/'), '/files/')).text();
+    expect(initial).toContain('Last updated: <time datetime="');
+    expect((await isolated.createFolder(new Request(origin + '/api/files/mkdir', {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'X-File-Name': 'nested' }
+    }))).status).toBe(201);
+    expect((await isolated.upload(localUpload('new.txt', 'uploaded', { 'X-File-Folder': 'nested' }))).status).toBe(201);
+    const uploaded = await Bun.file(resolve(path, 'nested/new.txt')).stat();
+    const page = await (await isolated.download(new Request(origin + '/files/'), '/files/')).text();
+    const timestamp = page.match(/id="stash-updated"[^>]*>Last updated: <time datetime="([^"]+)"/)[1];
+    expect(Date.parse(timestamp)).toBeGreaterThanOrEqual(Math.floor(uploaded.mtimeMs));
+    expect(page).toContain(`>${new Date().toISOString().slice(0, 10).replaceAll('-', '/')}</time>`);
+  });
 });
 
 test('search matches file and folder names without changing download URLs', async () => {
@@ -906,6 +951,7 @@ test('deep folders show an unavailable size instead of a partial total and remai
   expect(html).toContain('A dash means its size is unavailable; open the folder to browse its contents.');
   expect(html).toContain('Search limits reached; these results may be incomplete.');
   const deepSearch = await (await fetch(origin + '/files/?q=notes.txt')).text();
+  expect(deepSearch).toContain('Last updated: unavailable');
   expect(deepSearch).toContain('Search limits reached; these results may be incomplete.');
   expect(deepSearch).not.toContain('>deep-folder\\');
   expect((await fetch(origin + '/files/deep-folder/child/')).status).toBe(200);
@@ -958,17 +1004,17 @@ test('the token field supports password autofill without putting credentials in 
       tokenForm = { method: element.getAttribute('method'), action: element.getAttribute('action'), autocomplete: element.getAttribute('autocomplete') };
     } })
     .on('#owner-token', { element(element) {
-      tokenField = { name: element.getAttribute('name'), type: element.getAttribute('type'), autocomplete: element.getAttribute('autocomplete'), value: element.getAttribute('value') };
+      tokenField = { name: element.getAttribute('name'), type: element.getAttribute('type'), autocomplete: element.getAttribute('autocomplete'), value: element.getAttribute('value'), describedBy: element.getAttribute('aria-describedby') };
     } })
     .on('#owner-token-form input[name="username"]', { element(element) {
-      usernameField = { type: element.getAttribute('type'), autocomplete: element.getAttribute('autocomplete'), value: element.getAttribute('value') };
+      usernameField = { id: element.getAttribute('id'), type: element.getAttribute('type'), autocomplete: element.getAttribute('autocomplete'), value: element.getAttribute('value') };
     } })
     .on('#owner-tools', { element(element) { ownerExpanded = element.hasAttribute('open'); } })
     .on('#owner-token-form button[type="submit"]', { element() { tokenSubmit = true; } })
     .transform(new Response(html)).text();
   expect(tokenForm).toEqual({ method: 'post', action: '/api/files/upload', autocomplete: 'on' });
-  expect(tokenField).toEqual({ name: 'password', type: 'password', autocomplete: 'current-password', value: null });
-  expect(usernameField).toEqual({ type: 'hidden', autocomplete: 'username', value: 'owner' });
+  expect(tokenField).toEqual({ name: 'password', type: 'password', autocomplete: 'current-password', value: null, describedBy: 'owner-token-help' });
+  expect(usernameField).toEqual({ id: 'owner-username', type: 'hidden', autocomplete: 'username', value: 'owner' });
   expect(ownerExpanded).toBe(false);
   expect(tokenSubmit).toBe(true);
   expect(html).not.toContain(token);

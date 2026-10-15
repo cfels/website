@@ -224,10 +224,12 @@ export async function createFileHost(rootPath, template, {
     }
   }
 
-  async function folderSize(directory, budget, depth = 0) {
+  async function folderSummary(directory, budget, depth = 0) {
     if (depth >= maxFolderSizeDepth) return null;
     let size = 0;
     try {
+      const stat = await directory.stat();
+      let updated = Math.max(stat.mtimeMs, stat.ctimeMs);
       for await (const { name } of await opendir(`/proc/self/fd/${directory.fd}`)) {
         if (budget.remaining-- <= 0) return null;
         if (!validName(name)) continue;
@@ -235,9 +237,10 @@ export async function createFileHost(rootPath, template, {
         try {
           entry = await openEntry(directory, name);
           if (!entry) continue;
-          const bytes = entry.stat.isDirectory() ? await folderSize(entry.handle, budget, depth + 1) : entry.stat.size;
-          if (bytes === null) return null;
-          size += bytes;
+          const summary = entry.stat.isDirectory() ? await folderSummary(entry.handle, budget, depth + 1) : { size: entry.stat.size, updated: Math.max(entry.stat.mtimeMs, entry.stat.ctimeMs) };
+          if (summary === null) return null;
+          size += summary.size;
+          updated = Math.max(updated, summary.updated);
           if (!Number.isSafeInteger(size)) return null;
         } catch (error) {
           if (!hiddenErrors.has(error.code)) throw error;
@@ -245,7 +248,7 @@ export async function createFileHost(rootPath, template, {
           if (entry) await entry.handle.close();
         }
       }
-      return size;
+      return { size, updated };
     } catch (error) {
       if (hiddenErrors.has(error.code)) return null;
       throw error;
@@ -256,6 +259,8 @@ export async function createFileHost(rootPath, template, {
     const query = (new URL(request.url).searchParams.get('q') || '').trim();
     if (query.length > 255) return failure('Search is limited to 255 characters', 400);
     if (request.method === 'HEAD') return new Response(null, { headers: pageHeaders });
+    const summary = await folderSummary(root, { remaining: maxFolderSizeEntries });
+    const updated = summary ? new Date(summary.updated).toISOString() : null;
     const search = query.toLowerCase();
     const entries = [];
     const sizeBudget = { remaining: maxFolderSizeEntries };
@@ -280,7 +285,7 @@ export async function createFileHost(rootPath, template, {
               remaining = 0;
               return;
             }
-            const size = isDirectory ? await folderSize(entry.handle, sizeBudget) : entry.stat.size;
+            const size = isDirectory ? (await folderSummary(entry.handle, sizeBudget))?.size ?? null : entry.stat.size;
             entries.push({ name, parts: entryParts, directory: isDirectory, size, modified: entry.stat.mtime.toISOString() });
           }
           if (search && isDirectory) {
@@ -310,6 +315,9 @@ export async function createFileHost(rootPath, template, {
 
     const response = new HTMLRewriter()
       .on('#folder-path', { element: element => element.setInnerContent(`C:\\files\\${parts.length ? parts.join('\\') + '\\' : ''}`) })
+      .on('#stash-updated', { element: element => {
+        if (updated) element.setInnerContent(`Last updated: <time datetime="${updated}">${updated.slice(0, 10).replaceAll('-', '/')}</time>`, { html: true });
+      } })
       .on('#file-search', { element: element => element.setAttribute('action', '/files/') })
       .on('#file-query', { element: element => element.setAttribute('value', escapeHTML(query)) })
       .on('#search-clear', { element: element => element.setAttribute('href', fileURL(parts, true)) })
@@ -385,7 +393,7 @@ export async function createFileHost(rootPath, template, {
       .on('.breadcrumb', { element: element => element.setInnerContent(`<a href="/home.html">Home</a> &gt; <a href="${fileURL(parts.slice(0, -1), true)}">Files</a> &gt; ${escapeHTML(name)}`, { html: true }) })
       .on('#folder-path', { element: element => element.setInnerContent(`C:\\files\\${parts.join('\\')}`) })
       .on('.personal-copy', { element: element => element.setInnerContent(type ? 'View the image below, or download the original.' : 'Read the notes below, or download the file.') })
-      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #owner-tools, #file-checksum', { element: element => element.remove() })
+      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #stash-updated, #owner-tools, #file-checksum', { element: element => element.remove() })
       .on('#file-viewer', { element: element => {
         element.removeAttribute('hidden');
         element.setAttribute('aria-label', type ? 'Image file viewer' : 'Text file viewer');
@@ -442,7 +450,7 @@ export async function createFileHost(rootPath, template, {
       .on('.breadcrumb', { element: element => element.setInnerContent(`<a href="/home.html">Home</a> &gt; <a href="${fileURL(parts.slice(0, -1), true)}">Files</a> &gt; ${escapeHTML(name)}`, { html: true }) })
       .on('#folder-path', { element: element => element.setInnerContent(`C:\\files\\${parts.join('\\')}`) })
       .on('.personal-copy', { element: element => element.setInnerContent('Check your download against the original file :p') })
-      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #owner-tools, #file-viewer', { element: element => element.remove() })
+      .on('#file-search, #file-search-results, .file-list, #folder-size-note, #stash-updated, #owner-tools, #file-viewer', { element: element => element.remove() })
       .on('#file-checksum', { element: element => element.removeAttribute('hidden') })
       .on('#checksum-back', { element: element => element.setAttribute('href', fileURL(parts.slice(0, -1), true)) })
       .on('#checksum-download', { element: element => element.setAttribute('href', fileURL(parts)) })
@@ -542,12 +550,12 @@ export async function createFileHost(rootPath, template, {
     const byteRevision = publishedBytes;
     const entryRevision = publishedEntries;
     const budget = { remaining: maxFolderSizeEntries };
-    const storedBytes = await folderSize(root, budget);
-    if (storedBytes === null || budget.remaining < activeMutations) return failure('Storage usage cannot be verified; owner actions are temporarily unavailable', 503);
+    const summary = await folderSummary(root, budget);
+    if (summary === null || budget.remaining < activeMutations) return failure('Storage usage cannot be verified; owner actions are temporarily unavailable', 503);
     const space = await statfs(`/proc/self/fd/${root.fd}`, { bigint: true });
     if (BigInt(budget.remaining) < BigInt(activeMutations) + publishedEntries - entryRevision) return failure('Storage entry limit reached', 507);
     const pendingBytes = BigInt(reservedBytes) + BigInt(required);
-    if (BigInt(storedBytes) + pendingBytes + publishedBytes - byteRevision > BigInt(maxStorageBytes) || space.bavail * space.bsize - pendingBytes < BigInt(minFreeBytes)) return failure('Upload storage limit or free-space reserve reached', 507);
+    if (BigInt(summary.size) + pendingBytes + publishedBytes - byteRevision > BigInt(maxStorageBytes) || space.bavail * space.bsize - pendingBytes < BigInt(minFreeBytes)) return failure('Upload storage limit or free-space reserve reached', 507);
     reservedBytes += required;
     return null;
   }

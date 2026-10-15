@@ -16,6 +16,19 @@ if (tools) {
   let actionPending = false;
   let uploadCancelled = false;
 
+  tools.addEventListener('toggle', () => {
+    if (!tools.open || actionPending) return;
+    if (window.top !== window.self) {
+      const page = new URL(window.location.href);
+      page.hash = 'owner-tools';
+      window.top.location.assign(page.href);
+      return;
+    }
+    token.focus();
+  });
+
+  if (window.location.hash === '#owner-tools') tools.open = true;
+
   tokenForm.addEventListener('submit', event => {
     event.preventDefault();
     if (actionPending || !token.reportValidity()) return;
