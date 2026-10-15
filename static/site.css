@@ -75,6 +75,11 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .graphic-menu a:active { transform: translate(1px, 1px); }
 .menu-greeting { margin-left: auto; color: #e765a1; white-space: nowrap; }
 .site { width: 800px; max-width: 100%; min-height: 100vh; padding: 8px 9px 15px; border-left: 9px solid #f14c90; border-right: 9px solid #f14c90; background: #fff2be url('assets/checker.png') repeat; }
+.standalone-page { overflow: hidden; }
+.standalone-page .site { position: fixed; top: 105px; bottom: 58px; min-height: 0; overflow: auto; }
+.page-bar { position: fixed; left: 0; width: 800px; max-width: 100%; border: 0; }
+.page-header { top: 0; height: 105px; }
+.page-footer { bottom: 0; height: 58px; }
 .masthead { display: flex; align-items: center; min-height: 76px; margin: -8px -9px 9px; padding: 5px 12px; border-bottom: 1px solid #e7629b; background: linear-gradient(#ededed, #d9d9d9); }
 .masthead h1 { color: #f34791; font-size: 27px; font-weight: 700; letter-spacing: -1px; text-shadow: 2px 2px #fff; }
 .masthead p { margin: 0; color: #8b6580; font-family: 'Comic Sans MS', 'Moxiu Japanese', cursive; font-size: 12px; }
@@ -214,6 +219,9 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
   .page-columns { grid-template-columns: minmax(0, 1fr) 155px; gap: 10px; }
 }
 @media (max-width: 600px) {
+  .standalone-page .site { top: 137px; bottom: 87px; }
+  .page-header { height: 137px; }
+  .page-footer { height: 87px; }
   body { font-size: 12px; }
   .browser-chrome { height: 137px; }
   .titlebar { height: 23px; font-size: 11px; }
@@ -259,6 +267,8 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
   .bottom-links { font-size: 12px; }
 }
 @media (max-width: 359px) {
+  .standalone-page .site { bottom: 120px; }
+  .page-footer { height: 120px; }
   .button-strip { grid-template-columns: repeat(3, 88px); }
 }
 @media (max-width: 350px) {

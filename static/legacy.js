@@ -23,7 +23,7 @@
         var width = Math.min(800, document.documentElement.clientWidth);
         var height = document.documentElement.clientHeight;
         if (container.style.width !== width + 'px') container.style.width = width + 'px';
-        if (/(^|\s)site(\s|$)/.test(container.className)) container.style.minHeight = Math.max(0, height - 23) + 'px';
+        if (/(^|\s)site(\s|$)/.test(container.className)) container.style.minHeight = /(^|\s)standalone-page(\s|$)/.test(document.documentElement.className) ? '0px' : Math.max(0, height - 23) + 'px';
         var className = document.body.className.replace(/(^|\s)legacy-narrow(?=\s|$)/g, '') + (width < 800 ? ' legacy-narrow' : '');
         if (document.body.className !== className) document.body.className = className;
         if (address) address.style.width = Math.max(0, container.clientWidth - address.offsetLeft - star.offsetWidth - 28) + 'px';

@@ -38,6 +38,52 @@ test('frame navigation works with IE8 click handlers', async () => {
   expect(events).toEqual(['back', 'forward', 'reload']);
 });
 
+test('standalone content keeps its navigation and footer while framed content avoids duplicate bars', async () => {
+  const script = await Bun.file(resolve(root, 'page.js')).text();
+  for (const framed of [false, true]) {
+    const bars = [];
+    const viewport = { className: '' };
+    const window = {};
+    window.self = window;
+    window.top = framed ? {} : window;
+    runInNewContext(script, {
+      window,
+      document: {
+        documentElement: viewport,
+        createElement: tag => ({ tag, setAttribute(name, value) { this[name] = value; } }),
+        body: { appendChild: element => bars.push(element) }
+      }
+    });
+    if (framed) {
+      expect(bars).toHaveLength(0);
+      expect(viewport.className).toBe('');
+    } else {
+      expect(viewport.className.trim()).toBe('standalone-page');
+      expect(bars.map(bar => [bar.tag, bar.src, bar.title, bar.frameborder])).toEqual([
+        ['iframe', '/header.html', 'Site navigation', '0'],
+        ['iframe', '/footer.html', 'Buttons and source link', '0']
+      ]);
+      for (const bar of bars) {
+        const links = [{ target: 'main' }, { target: 'main' }];
+        bar.contentWindow = { document: { querySelectorAll: selector => selector === 'a[target="main"]' ? links : [] } };
+        bar.onload();
+        expect(links.map(link => link.target)).toEqual(['_top', '_top']);
+      }
+    }
+  }
+});
+
+test('the toolbar reloads standalone content when there is no main frame', async () => {
+  const buttons = { '[data-back]': {}, '[data-forward]': {}, '[data-reload]': {} };
+  let reloads = 0;
+  runInNewContext(await Bun.file(resolve(root, 'header.js')).text(), {
+    document: { querySelector: selector => buttons[selector] },
+    top: { frames: {}, location: { reload: () => reloads++ } }
+  });
+  buttons['[data-reload]'].onclick();
+  expect(reloads).toBe(1);
+});
+
 test('menu shortcuts use the Latin font instead of the Japanese subset', async () => {
   const labels = [];
   const japanese = [];
@@ -139,6 +185,10 @@ test('legacy pages fit the available height including padding after vertical res
   viewport.clientHeight = 10;
   handlers.onresize();
   expect(container.style.minHeight).toBe('0px');
+  viewport.className = 'standalone-page';
+  viewport.clientHeight = 600;
+  handlers.onresize();
+  expect(container.style.minHeight).toBe('0px');
 });
 
 test('legacy footer buttons fill a single row at desktop and narrow frame widths', async () => {
@@ -215,6 +265,7 @@ test('every content document provides IE8 standards mode, UTF-8, and conditional
       expect(html).toContain('<script src="/legacy.js"></script>');
       expect(html).toContain('<link rel="stylesheet" href="/legacy.css">');
       expect(html.indexOf('/legacy.js')).toBeLessThan(html.indexOf('<body'));
+      if (name !== 'header.html' && name !== 'footer.html') expect(html).toContain('<script src="/page.js" defer></script>');
     }
     for (const image of html.matchAll(/(?:src|href)="[^"\s]*assets\/([^"\s]+)\.webp"/g)) {
       const png = new Uint8Array(await Bun.file(resolve(root, 'assets', image[1] + '.png')).arrayBuffer());
