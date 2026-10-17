@@ -58,19 +58,20 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
 .menubar a { color: #656565; text-decoration: none; white-space: nowrap; }
 .menubar a:hover { color: #b31b61; background: #ffd6e6; }
 .toolbar { height: 34px; display: flex; align-items: center; gap: 5px; padding: 3px 9px; border-bottom: 1px solid #ccc; background: repeating-linear-gradient(#fafafa 0 1px, #ededed 1px 3px); }
-.toolbar button, .tool-home { position: relative; display: inline-grid; place-items: center; width: 23px; height: 23px; flex: 0 0 23px; padding: 0; color: white; font-size: 22px; line-height: 1; text-decoration: none; background: linear-gradient(#fbb5d5, #ed5596); border: 1px outset #ffd7e8; }
-.toolbar button:hover, .tool-home:hover { background: #ed70a6; }
-.arrow { position: relative; width: 12px; height: 4px; background: white; }
-.arrow::before { position: absolute; left: -3px; top: -3px; content: ''; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-right: 6px solid white; }
-.arrow.right { transform: rotate(180deg); }
-.house { width: 9px; height: 9px; border: 3px solid #fff; border-bottom: 0; margin-top: 4px; }
-.house::before { content: ''; position: absolute; top: 2px; left: 3px; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 7px solid white; }
-.address-label { padding: 0 4px 0 8px; color: #777; }
-.address { min-width: 0; flex: 1; height: 21px; padding: 2px 8px; color: #888; text-decoration: none; background: white; border: 2px inset #eee; white-space: nowrap; overflow: hidden; }
-.toolbar-star { margin: 0 7px; font-size: 23px; color: #f76d9f; text-shadow: 1px 1px white; }
+.toolbar button, .tool-home { display: inline-block; width: 22px; height: 22px; flex: 0 0 22px; padding: 0; text-decoration: none; background: none; border: 0; }
+.toolbar button img, .tool-home img { display: block; width: 22px; height: 22px; }
+.toolbar button .tool-hover, .tool-home .tool-hover { display: none; }
+.toolbar button:hover img, .tool-home:hover img { display: none; }
+.toolbar button:hover .tool-hover, .tool-home:hover .tool-hover { display: block; }
+.address { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; height: 22px; padding: 1px 3px 1px 12px; color: #888; text-decoration: none; background: white; border: 1px solid #e1e1e1; border-radius: 11px; box-shadow: inset 0 1px 3px #0002; white-space: nowrap; overflow: hidden; }
+.address span { overflow: hidden; text-overflow: ellipsis; }
+.address-go { display: block; width: 18px; height: 18px; flex: 0 0 18px; margin-left: auto; }
+.address:visited { color: #888; }
+.toolbar-star { position: relative; top: -2px; width: 24px; height: 24px; flex: 0 0 24px; margin: 0 7px; }
+.toolbar-star img { display: block; width: 24px; height: 24px; border-radius: 50%; }
 .graphic-menu { height: 32px; display: flex; align-items: center; gap: 5px; padding: 3px 9px; border-bottom: 2px solid #f05693; background: #fff; }
-.graphic-menu a { display: block; height: 23px; }
-.graphic-menu img { max-width: 100%; }
+.graphic-menu a { display: block; min-width: 0; height: 22px; }
+.graphic-menu img { width: 99px; height: 22px; max-width: 100%; border-radius: 8px; }
 .graphic-menu a:hover img { filter: brightness(1.12); }
 .graphic-menu a:active { transform: translate(1px, 1px); }
 .menu-greeting { margin-left: auto; color: #e765a1; white-space: nowrap; }
@@ -211,7 +212,7 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
   .mini-banner img { width: 50px; }
   .menu-greeting { display: none; }
   .graphic-menu { gap: 4px; }
-  .graphic-menu a { flex: 1; }
+  .graphic-menu a { flex: 0 1 99px; }
   .graphic-menu img { width: 100%; object-fit: fill; }
   .art-link { height: auto; aspect-ratio: 800 / 493; }
   .featured-character { top: 29vw; width: 124px; }
@@ -227,10 +228,10 @@ button { color: #222; font: 12px Tahoma, sans-serif; cursor: pointer; }
   .titlebar { height: 23px; font-size: 11px; }
   .menubar { height: 21px; gap: 12px; font-size: 10px; }
   .toolbar { height: 35px; padding-left: 8px; }
-  .address-label, .toolbar-star { display: none; }
-  .graphic-menu { height: 58px; display: grid; grid-template-columns: repeat(3, minmax(0, 108px)); justify-content: center; gap: 4px 5px; padding: 3px 4px; }
-  .graphic-menu a { height: 23px; }
-  .graphic-menu img { width: 108px; max-width: 100%; }
+  .toolbar-star { display: none; }
+  .graphic-menu { height: 58px; display: grid; grid-template-columns: repeat(3, minmax(0, 99px)); justify-content: center; gap: 4px 5px; padding: 3px 4px; }
+  .graphic-menu a { height: 22px; }
+  .graphic-menu img { width: 99px; max-width: 100%; }
   .site { border-width: 5px; padding: 6px 7px 13px; }
   .masthead { margin: -6px -7px 7px; min-height: 71px; padding: 6px 8px; }
   .masthead h1 { font-size: 24px; }

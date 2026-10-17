@@ -17,10 +17,10 @@ for (const name of files.filter(name => name.endsWith('.html'))) {
       for (const attribute of ['src', 'href']) {
         const value = element.getAttribute(attribute);
         if (!value || /^(https?:|mailto:|#)/.test(value)) continue;
-        const localPath = value.split('#')[0];
+        const localPath = value.split(/[?#]/)[0];
         const target = value.startsWith('/') ? resolve(root, localPath.slice(1)) : resolve(dirname(path), localPath);
-        const documentPath = value.endsWith('/') ? resolve(target, 'index.html') : target;
-        if (!files.includes(relative(root, documentPath)) && localPath.split('?')[0] !== '/files/') errors.push(`${name}: missing ${value}`);
+        const documentPath = localPath.endsWith('/') ? resolve(target, 'index.html') : target;
+        if (!files.includes(relative(root, documentPath)) && localPath !== '/files/') errors.push(`${name}: missing ${value}`);
       }
       if (element.tagName === 'frame') frameNames.add(element.getAttribute('name'));
       const target = element.getAttribute('target');
