@@ -14,15 +14,19 @@ a:focus, button:focus, input:focus, .text-file-content:focus { outline: 2px dott
 .titlebar { position: relative; display: block; background: #ef83b3 url('assets/titlebar.png') repeat-y; padding-right: 56px; }
 .titlebar > span { vertical-align: middle; }
 .window-controls { position: absolute; top: 2px; right: 3px; }
-.menubar { display: block; background: #ededed url('assets/chrome-stripe.png') repeat; }
-.menubar a { display: inline-block; margin-right: 13px; }
+.menubar { display: block; background: #ededed url('assets/chrome-stripe.png') repeat; font-size: 0; }
+.menubar a { display: inline-block; margin-right: 13px; font-size: 10px; line-height: 17px; }
 .menubar a, .menubar a:visited { color: #656565; }
 .menubar a:hover { color: #b31b61; }
-.toolbar { display: block; padding-top: 5px; padding-bottom: 5px; background: #ededed url('assets/chrome-stripe.png') repeat; white-space: nowrap; font-size: 0; }
+.toolbar { display: block; padding-top: 5px; padding-bottom: 4px; background: #ededed url('assets/chrome-stripe.png') repeat; white-space: nowrap; font-size: 0; }
 .toolbar button, .tool-home { vertical-align: middle; margin-right: 5px; font-size: 0; }
 .toolbar-star { display: inline-block; vertical-align: middle; }
-.address { display: inline-block; vertical-align: middle; margin-right: 5px; font-size: 10px; }
-.address-go { float: right; margin-left: 8px; }
+.address { position: relative; display: inline-block; vertical-align: middle; margin-right: 5px; padding: 2px 29px 2px 13px; border: 0; background: url('assets/buttons/address-left.png') no-repeat; font-size: 10px; }
+.address:before, .address:after { position: absolute; top: 0; height: 22px; content: ''; }
+.address:before { left: 11px; right: 11px; background: url('assets/buttons/address-middle.png') repeat-x; }
+.address:after { right: 0; width: 11px; background: url('assets/buttons/address-right.png') no-repeat; }
+.address span { position: relative; z-index: 1; display: block; line-height: 18px; }
+.address-go { position: absolute; z-index: 1; top: 2px; right: 4px; margin: 0; }
 .address, .address:visited { color: #888; }
 .address:hover { color: #ee3685; }
 .graphic-menu { position: relative; display: block; overflow: hidden; }

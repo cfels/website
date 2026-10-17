@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
+import { inflateSync } from 'node:zlib';
 
 const root = resolve(import.meta.dir, '../static');
 
@@ -252,6 +253,27 @@ test('all PNG artwork uses XP-compatible bit depths and the sidebar crop stays s
   const crop = new DataView(await Bun.file(resolve(root, 'assets/additions/1-stamp.png')).arrayBuffer());
   expect(crop.getUint32(16)).toBe(300);
   expect(crop.getUint32(20)).toBe(83);
+});
+
+test('navigation buttons include transparent rounded corners without CSS support', async () => {
+  const html = await Bun.file(resolve(root, 'header.html')).text();
+  const images = [...html.matchAll(/src="(assets\/navigation\/[^"?]+)\?v=rounded"/g)];
+  expect(images).toHaveLength(6);
+  for (const [, path] of images) {
+    const png = Buffer.from(await Bun.file(resolve(root, path)).arrayBuffer());
+    expect(png.readUInt32BE(16)).toBe(99);
+    expect(png.readUInt32BE(20)).toBe(22);
+    expect(png[24]).toBe(8);
+    expect(png[25]).toBe(6);
+    const chunks = [];
+    for (let offset = 8; offset < png.length;) {
+      const size = png.readUInt32BE(offset);
+      if (png.toString('ascii', offset + 4, offset + 8) === 'IDAT') chunks.push(png.subarray(offset + 8, offset + 8 + size));
+      offset += size + 12;
+    }
+    const pixels = inflateSync(Buffer.concat(chunks));
+    expect(pixels[4]).toBe(0);
+  }
 });
 
 test('every content document provides IE8 standards mode, UTF-8, and conditional fallbacks', async () => {

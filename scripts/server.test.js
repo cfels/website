@@ -46,7 +46,7 @@ test('download listener does not serve content pages, artwork, previews, or owne
 });
 
 test('download listener serves the bars and their dependencies with normal static protections', async () => {
-  const paths = new Set(['/header.html', '/footer.html', '/site.css', '/header.js', '/frames.js', '/page.js', '/legacy.js', '/legacy.css', '/assets/favicon.png', '/assets/titlebar.png', '/assets/chrome-stripe.png', '/assets/fonts/tahoma.woff2']);
+  const paths = new Set(['/header.html', '/footer.html', '/site.css', '/header.js', '/frames.js', '/page.js', '/legacy.js', '/legacy.css', '/assets/favicon.png', '/assets/titlebar.png', '/assets/chrome-stripe.png', '/assets/fonts/tahoma.woff2', '/assets/buttons/address-left.png', '/assets/buttons/address-middle.png', '/assets/buttons/address-right.png']);
   for (const name of ['header', 'footer']) {
     await new HTMLRewriter().on('img', {
       element(element) { paths.add('/' + element.getAttribute('src')); }

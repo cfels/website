@@ -29,7 +29,15 @@ for name, label in labels.items():
     image(root / 'scripts/navigation-button.png',
           '-font', output / 'fonts/comic-bold.woff2', '-pointsize', 12, '-gravity', 'center',
           '-fill', '#ba1c65', '-annotate', '+1+1', label, '-fill', 'white', '-annotate', '+0+0', label,
+          '-resize', '99x22!',
+          '(', '-size', '396x88', 'xc:black', '-fill', 'white', '-draw',
+          'roundrectangle 0,0 395,87 32,32', '-resize', '99x22!', ')',
+          '-alpha', 'off', '-compose', 'CopyOpacity', '-composite',
           '-depth', 8, '-strip', output / 'navigation' / (name + '.png'))
+for name, geometry in {'left': '11x22+0+0', 'middle': '1x22+400+0', 'right': '11x22+789+0'}.items():
+    image('-size', '3200x88', 'xc:none', '-fill', 'white', '-stroke', '#e1e1e1', '-strokewidth', 4,
+          '-draw', 'roundrectangle 2,2 3198,86 42,42', '-resize', '800x22!',
+          '-crop', geometry, '+repage', '-depth', 8, '-strip', output / 'buttons' / ('address-' + name + '.png'))
 image('-size', '300x27', 'gradient:#ffc1de-#f579aa', '-fill', '#f0418b', '-stroke', 'none', '-draw',
       'polygon 11,3 13,8 18,8 14,12 16,17 11,14 7,18 7,12 3,9 9,8 polygon 24,11 25,15 29,16 26,18 26,22 23,20 20,22 21,18 18,15 23,15',
       '-strip', output / 'section.png')
